@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
 import com.example.data.local.KentRepertoryDataset
+import com.example.data.local.KentRubricDataLoader
 import com.example.data.local.SavedCaseEntity
 import com.example.data.model.CaseTotalityItem
 import com.example.data.model.KentRubric
@@ -131,7 +132,7 @@ data class PatientCaseInfo(
 )
 
 data class PractitionerProfile(
-  val name: String = "Dr. Harshad Jinjala",
+  val name: String = "Dr. Rudra Goswami",
   val role: String = "Doctor" // "Doctor", "Student"
 )
 
@@ -168,7 +169,7 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
   // Practitioner Profile (RootChart Clinical Studio)
   private val _practitionerProfile = MutableStateFlow(
     PractitionerProfile(
-      name = prefs.getString("clinician_name", "Dr. Harshad Jinjala") ?: "Dr. Harshad Jinjala",
+      name = prefs.getString("clinician_name", "Dr. Rudra Goswami") ?: "Dr. Rudra Goswami",
       role = prefs.getString("clinician_role", "Doctor") ?: "Doctor"
     )
   )
@@ -186,6 +187,14 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
 
   private val _browserRubrics = MutableStateFlow<List<KentRubric>>(repository.getAllRubrics())
   val browserRubrics: StateFlow<List<KentRubric>> = _browserRubrics.asStateFlow()
+
+  init {
+    viewModelScope.launch {
+      val loaded = KentRubricDataLoader.loadAllRubrics(application)
+      repository.setLoadedRubrics(loaded)
+      _browserRubrics.value = repository.searchRubrics(_searchQuery.value, _selectedChapter.value)
+    }
+  }
 
   // Active Patient Case Info
   private val _caseInfo = MutableStateFlow(PatientCaseInfo())
@@ -241,7 +250,9 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
   }
 
   fun updatePractitionerProfile(name: String, role: String) {
-    _practitionerProfile.value = PractitionerProfile(name.ifBlank { "Dr. Meena Patel" }, role)
+    val cleanName = name.ifBlank { "Dr. Rudra Goswami" }.trim()
+    prefs.edit().putString("clinician_name", cleanName).putString("clinician_role", role).apply()
+    _practitionerProfile.value = PractitionerProfile(cleanName, role)
     _showProfileDialog.value = false
     showNotification("Practitioner profile updated")
   }
@@ -269,7 +280,7 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
   }
 
   fun loginPractitioner(name: String, role: String) {
-    val cleanName = name.ifBlank { "Dr. Harshad Jinjala" }.trim()
+    val cleanName = name.ifBlank { "Dr. Rudra Goswami" }.trim()
     val cleanRole = if (role.equals("Student", ignoreCase = true)) "Student" else "Doctor"
     prefs.edit()
       .putString("clinician_name", cleanName)

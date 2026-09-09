@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
+import com.example.ui.components.RootChartLogo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -70,7 +71,7 @@ fun LoginScreen(
   onLogin: (name: String, role: String) -> Unit,
   modifier: Modifier = Modifier
 ) {
-  var doctorName by remember { mutableStateOf(initialName.ifBlank { "Dr. Harshad Jinjala" }) }
+  var doctorName by remember { mutableStateOf(if (initialName == "Dr. Harshad Jinjala") "" else initialName) }
   var selectedRole by remember { mutableStateOf(if (initialRole.isNotBlank()) initialRole else "Doctor") }
   val scrollState = rememberScrollState()
 
@@ -89,26 +90,8 @@ fun LoginScreen(
     ) {
       Spacer(modifier = Modifier.height(16.dp))
 
-      // Logo & App Name Brand Presentation
-      Box(
-        modifier = Modifier
-          .size(88.dp)
-          .clip(RoundedCornerShape(26.dp))
-          .background(
-            Brush.linearGradient(
-              colors = listOf(ClinicalTerracotta, ClinicalTerracottaDark)
-            )
-          )
-          .border(2.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(26.dp)),
-        contentAlignment = Alignment.Center
-      ) {
-        Icon(
-          imageVector = Icons.Default.LocalHospital,
-          contentDescription = "RootChart Logo",
-          tint = Color.White,
-          modifier = Modifier.size(48.dp)
-        )
-      }
+      // Logo matching external app icon
+      RootChartLogo(size = 80.dp)
 
       Spacer(modifier = Modifier.height(18.dp))
 
@@ -201,7 +184,7 @@ fun LoginScreen(
           OutlinedTextField(
             value = doctorName,
             onValueChange = { doctorName = it },
-            placeholder = { Text("e.g. Dr. Harshad Jinjala") },
+            placeholder = { Text("Ex: Dr. Rudra Goswami") },
             leadingIcon = {
               Icon(
                 imageVector = Icons.Default.AccountCircle,
@@ -303,7 +286,7 @@ fun LoginScreen(
           // Login Button
           Button(
             onClick = {
-              val nameToUse = doctorName.trim().ifBlank { "Dr. Harshad Jinjala" }
+              val nameToUse = doctorName.trim().ifBlank { "Dr. Rudra Goswami" }
               onLogin(nameToUse, selectedRole)
             },
             modifier = Modifier

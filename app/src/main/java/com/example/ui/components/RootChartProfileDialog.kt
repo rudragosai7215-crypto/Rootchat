@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,12 +39,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -65,43 +65,24 @@ import com.example.ui.viewmodel.PractitionerProfile
 @Composable
 fun RootChartLogo(
   modifier: Modifier = Modifier,
-  size: Dp = 40.dp,
-  backgroundColor: Color = TerracottaPrimaryLight,
-  strokeColor: Color = Color.White
+  size: Dp = 40.dp
 ) {
   Box(
     modifier = modifier
       .size(size)
-      .clip(RoundedCornerShape(size * 0.26f))
-      .background(backgroundColor),
+      .clip(RoundedCornerShape(size * 0.24f))
+      .background(
+        Brush.linearGradient(
+          listOf(Color(0xFFD9643A), Color(0xFFC85A32), Color(0xFFA6431D))
+        )
+      ),
     contentAlignment = Alignment.Center
   ) {
-    Canvas(
-      modifier = Modifier.size(size * 0.62f)
-    ) {
-      val w = this.size.width
-      val h = this.size.height
-
-      val path = Path().apply {
-        moveTo(0f, h * 0.52f)
-        lineTo(w * 0.28f, h * 0.52f)
-        lineTo(w * 0.38f, h * 0.22f)
-        lineTo(w * 0.50f, h * 0.82f)
-        lineTo(w * 0.62f, h * 0.35f)
-        lineTo(w * 0.72f, h * 0.52f)
-        lineTo(w, h * 0.52f)
-      }
-
-      drawPath(
-        path = path,
-        color = strokeColor,
-        style = Stroke(
-          width = (size.value * 0.075f).coerceAtLeast(1.8f).dp.toPx(),
-          cap = StrokeCap.Round,
-          join = StrokeJoin.Round
-        )
-      )
-    }
+    Image(
+      painter = painterResource(id = com.example.R.drawable.ic_launcher_foreground),
+      contentDescription = "RootChart Logo",
+      modifier = Modifier.fillMaxSize()
+    )
   }
 }
 
@@ -208,7 +189,7 @@ fun RootChartProfileDialog(
             OutlinedTextField(
               value = name,
               onValueChange = { name = it },
-              placeholder = { Text("e.g. Dr. Meena Patel", color = CharcoalMutedLight) },
+              placeholder = { Text("Ex: Dr. Rudra Goswami", color = CharcoalMutedLight) },
               singleLine = true,
               shape = RoundedCornerShape(12.dp),
               colors = OutlinedTextFieldDefaults.colors(

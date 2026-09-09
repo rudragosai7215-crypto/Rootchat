@@ -14,12 +14,21 @@ import kotlinx.coroutines.flow.Flow
 
 class RepertoryRepository(private val savedCaseDao: SavedCaseDao) {
 
-  fun getChapters(): List<String> = KentRepertoryDataset.chapters
+  private var dynamicRubrics: List<KentRubric> = KentRepertoryDataset.rubrics
 
-  fun getAllRubrics(): List<KentRubric> = KentRepertoryDataset.rubrics
+  fun setLoadedRubrics(rubrics: List<KentRubric>) {
+    dynamicRubrics = rubrics
+  }
+
+  fun getChapters(): List<String> {
+    val dynamicChapters = dynamicRubrics.map { it.chapter }.distinct().sorted()
+    return listOf("All") + (dynamicChapters.ifEmpty { KentRepertoryDataset.chapters.filter { it != "All" } })
+  }
+
+  fun getAllRubrics(): List<KentRubric> = dynamicRubrics
 
   fun searchRubrics(query: String, chapter: String = "All"): List<KentRubric> {
-    return KentRepertoryDataset.rubrics.filter { rubric ->
+    return dynamicRubrics.filter { rubric ->
       val matchesChapter = (chapter == "All" || rubric.chapter.equals(chapter, ignoreCase = true))
       val matchesQuery = query.isBlank() ||
           rubric.rubricName.contains(query, ignoreCase = true) ||
@@ -31,7 +40,7 @@ class RepertoryRepository(private val savedCaseDao: SavedCaseDao) {
   }
 
   fun getRubricById(id: String): KentRubric? {
-    return KentRepertoryDataset.rubrics.find { it.id == id }
+    return dynamicRubrics.find { it.id == id } ?: KentRepertoryDataset.rubrics.find { it.id == id }
   }
 
   fun getPresets(): List<KentRepertoryDataset.TotalityPreset> = KentRepertoryDataset.presets

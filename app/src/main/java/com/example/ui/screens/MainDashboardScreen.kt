@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
+import com.example.ui.components.RootChartLogo
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.AlertDialog
@@ -125,24 +126,7 @@ fun MainDashboardScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                  Brush.linearGradient(
-                    listOf(ClinicalTerracotta, ClinicalTerracottaDark)
-                  )
-                ),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(
-                imageVector = Icons.Default.LocalHospital,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-              )
-            }
+            RootChartLogo(size = 42.dp)
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -299,41 +283,36 @@ fun MainDashboardScreen(
         Column(modifier = Modifier.fillMaxWidth()) {
           Text(
             text = "Start New Case",
-            fontSize = 18.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Serif,
             color = WarmCharcoal
           )
-          Text(
-            text = "Choose case modality to begin clinical totality & repertorization",
-            fontSize = 12.sp,
-            color = WarmCharcoal.copy(alpha = 0.65f)
-          )
         }
       }
 
-      // Acute Case Card
+      // Acute Case Card - Clean & Classic
       item {
         Card(
           onClick = onStartAcuteCase,
           modifier = Modifier
             .fillMaxWidth()
             .testTag("start_acute_case_card"),
-          shape = RoundedCornerShape(18.dp),
+          shape = RoundedCornerShape(16.dp),
           colors = CardDefaults.cardColors(containerColor = Color.White),
-          border = androidx.compose.foundation.BorderStroke(1.5.dp, ClinicalTerracotta.copy(alpha = 0.4f)),
+          border = androidx.compose.foundation.BorderStroke(1.5.dp, ClinicalTerracotta.copy(alpha = 0.35f)),
           elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
-              .padding(18.dp),
+              .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically
           ) {
             Box(
               modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .size(46.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(ClinicalTerracotta.copy(alpha = 0.12f)),
               contentAlignment = Alignment.Center
             ) {
@@ -341,46 +320,21 @@ fun MainDashboardScreen(
                 imageVector = Icons.Default.Bolt,
                 contentDescription = null,
                 tint = ClinicalTerracotta,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(26.dp)
               )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                  text = "Acute Case",
-                  fontSize = 18.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = WarmCharcoal
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                  color = ClinicalTerracotta,
-                  shape = RoundedCornerShape(6.dp)
-                ) {
-                  Text(
-                    text = "12 GUIDED STEPS",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                  )
-                }
-              }
-
-              Spacer(modifier = Modifier.height(4.dp))
-
               Text(
-                text = "Etiology, LSMC Particulars, Acute Mentals, Generals, Totality & Prescription",
-                fontSize = 12.sp,
-                color = WarmCharcoal.copy(alpha = 0.7f),
-                lineHeight = 16.sp
+                text = "Acute Case",
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
+                color = WarmCharcoal
               )
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
 
             Button(
               onClick = onStartAcuteCase,
@@ -394,28 +348,28 @@ fun MainDashboardScreen(
         }
       }
 
-      // Chronic Case Card
+      // Chronic Case Card - Clean & Classic
       item {
         Card(
           onClick = onStartChronicCase,
           modifier = Modifier
             .fillMaxWidth()
             .testTag("start_chronic_case_card"),
-          shape = RoundedCornerShape(18.dp),
+          shape = RoundedCornerShape(16.dp),
           colors = CardDefaults.cardColors(containerColor = Color.White),
-          border = androidx.compose.foundation.BorderStroke(1.5.dp, SageMiasm.copy(alpha = 0.5f)),
+          border = androidx.compose.foundation.BorderStroke(1.5.dp, SageMiasm.copy(alpha = 0.45f)),
           elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
-              .padding(18.dp),
+              .padding(horizontal = 20.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically
           ) {
             Box(
               modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .size(46.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(SageMiasm.copy(alpha = 0.15f)),
               contentAlignment = Alignment.Center
             ) {
@@ -423,46 +377,21 @@ fun MainDashboardScreen(
                 imageVector = Icons.Default.Spa,
                 contentDescription = null,
                 tint = SageMiasm,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(26.dp)
               )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                  text = "Chronic Case",
-                  fontSize = 18.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = WarmCharcoal
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                  color = SageMiasm,
-                  shape = RoundedCornerShape(6.dp)
-                ) {
-                  Text(
-                    text = "17 GUIDED STEPS",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                  )
-                }
-              }
-
-              Spacer(modifier = Modifier.height(4.dp))
-
               Text(
-                text = "HPI, Past/Family History, Mentals, Generals, Miasms, Totality & Constitutional Rx",
-                fontSize = 12.sp,
-                color = WarmCharcoal.copy(alpha = 0.7f),
-                lineHeight = 16.sp
+                text = "Chronic Case",
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
+                color = WarmCharcoal
               )
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
 
             Button(
               onClick = onStartChronicCase,
@@ -567,7 +496,7 @@ fun MainDashboardScreen(
                 color = WarmCharcoal
               )
               Text(
-                text = "Choose Acute (12 Steps) or Chronic (17 Steps) above to record a patient case.",
+                text = "Choose Acute or Chronic above to record a patient case.",
                 fontSize = 12.sp,
                 color = WarmCharcoal.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 4.dp)

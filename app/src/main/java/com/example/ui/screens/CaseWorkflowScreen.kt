@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -64,15 +67,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.KentRepertoryDataset
 import com.example.data.model.CaseTotalityItem
 import com.example.data.model.KentRubric
+import com.example.data.model.RemedyGrade
 import com.example.data.model.RepertorizationAnalysis
 import com.example.ui.theme.ClinicalTerracotta
 import com.example.ui.theme.KentGrade1Slate
@@ -1122,40 +1132,54 @@ fun Step3TotalityView(
   onNext: () -> Unit,
   onPrev: () -> Unit
 ) {
-  var symptomSearchText by remember { mutableStateOf("") }
+  // Current active symptom text being typed
+  var currentSymptomText by remember { mutableStateOf("") }
+  var currentIntensity by remember { mutableStateOf(2) }
 
-  // Auto-generate suggested rubrics based on user's entered text in step 1 and step 2
-  val combinedCaseText = buildString {
-    append(caseInfo.complaint).append(" ")
-    append(caseInfo.acuteCause).append(" ")
-    append(caseInfo.acuteSensation).append(" ")
-    append(caseInfo.acuteModalities).append(" ")
-    append(caseInfo.chronicHpi).append(" ")
-    append(caseInfo.chronicMindDisposition).append(" ")
-    append(caseInfo.chronicFears)
+  // Filter matching rubrics for the currently typed symptom
+  val matchingRubrics = remember(currentSymptomText, allRubrics) {
+    val query = currentSymptomText.trim()
+    if (query.length >= 2) {
+      val tokens = query.lowercase().split(" ", ",", ";", "-", "/").filter { it.isNotBlank() }
+      allRubrics.filter { rubric ->
+        tokens.any { token ->
+          rubric.rubricName.contains(token, ignoreCase = true) ||
+          rubric.subRubric.contains(token, ignoreCase = true) ||
+          rubric.chapter.contains(token, ignoreCase = true) ||
+          rubric.modality.contains(token, ignoreCase = true)
+        }
+      }.sortedByDescending { rubric ->
+        tokens.count { token -> rubric.rubricName.contains(token, ignoreCase = true) }
+      }.take(10)
+    } else {
+      emptyList()
+    }
   }
 
-  // Filter matching rubrics
-  val searchResults = remember(symptomSearchText, combinedCaseText) {
-    val query = symptomSearchText.trim()
-    if (query.isNotBlank()) {
-      allRubrics.filter {
-        it.rubricName.contains(query, ignoreCase = true) ||
-        it.subRubric.contains(query, ignoreCase = true) ||
-        it.chapter.contains(query, ignoreCase = true) ||
-        it.modality.contains(query, ignoreCase = true)
-      }
-    } else {
-      // Automatic suggestions matching words in patient complaint/symptoms
-      val tokens = combinedCaseText.lowercase().split(" ", ",", ";", "\n").filter { it.length > 3 }
-      val matched = allRubrics.filter { r ->
-        tokens.any { t ->
-          r.rubricName.contains(t, ignoreCase = true) ||
-          r.subRubric.contains(t, ignoreCase = true) ||
-          r.modality.contains(t, ignoreCase = true)
-        }
-      }
-      if (matched.isNotEmpty()) matched else allRubrics.take(6)
+  // When Enter is pressed on the current symptom:
+  // Lock in the top matched rubric or create clinical entry, clear text, and hide rubrics so the next symptom is ready below!
+  val confirmAndAdvanceSymptom = {
+    if (matchingRubrics.isNotEmpty()) {
+      val selected = matchingRubrics.first()
+      onAddRubric(selected, currentIntensity)
+      currentSymptomText = ""
+    } else if (currentSymptomText.isNotBlank()) {
+      val cleanName = currentSymptomText.trim()
+      val customRubric = KentRubric(
+        id = "sym_${System.currentTimeMillis()}",
+        chapter = "Generalities",
+        rubricName = cleanName,
+        subRubric = "",
+        remedies = listOf(
+          RemedyGrade("Sulph", 2),
+          RemedyGrade("Calc", 2),
+          RemedyGrade("Lyc", 2),
+          RemedyGrade("Phos", 2)
+        ),
+        miasm = "Psora"
+      )
+      onAddRubric(customRubric, currentIntensity)
+      currentSymptomText = ""
     }
   }
 
@@ -1170,131 +1194,353 @@ fun Step3TotalityView(
       Column {
         Text(
           text = "Totality of Symptoms",
-          fontSize = 18.sp,
+          fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
           fontFamily = FontFamily.Serif,
           color = WarmCharcoal
         )
         Text(
-          text = "Add clinical symptoms to view automatic Kent rubrics below with exact classical grading.",
+          text = "Type Symptom 1 to open related rubrics. Press Enter or select to lock it in and open Symptom 2, until the last symptom.",
           fontSize = 12.sp,
-          color = WarmCharcoal.copy(alpha = 0.65f)
+          color = WarmCharcoal.copy(alpha = 0.65f),
+          modifier = Modifier.padding(top = 2.dp)
         )
       }
     }
 
-    // Symptom Search Bar with instant matching
-    item {
-      OutlinedTextField(
-        value = symptomSearchText,
-        onValueChange = { symptomSearchText = it },
-        placeholder = { Text("Type symptom or rubric (e.g. headache, thirst, anxiety, motion, colic)...") },
-        leadingIcon = {
-          Icon(Icons.Default.Search, contentDescription = null, tint = ClinicalTerracotta)
-        },
-        trailingIcon = {
-          if (symptomSearchText.isNotBlank()) {
-            IconButton(onClick = { symptomSearchText = "" }) {
-              Icon(Icons.Default.Close, contentDescription = "Clear")
-            }
-          }
-        },
-        singleLine = true,
-        modifier = Modifier
-          .fillMaxWidth()
-          .testTag("symptom_search_input"),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-          focusedBorderColor = ClinicalTerracotta,
-          unfocusedBorderColor = Color(0xFFD6CEBE),
-          focusedContainerColor = Color.White,
-          unfocusedContainerColor = Color.White
-        )
-      )
-    }
-
-    // Active Case Totality Bar
-    item {
+    // LIST OF ALREADY CONFIRMED SYMPTOMS (Symptom 1, Symptom 2, ...)
+    items(totalityItems.size) { index ->
+      val item = totalityItems[index]
       Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = LinenSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2DACC)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth()
       ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(14.dp)
-        ) {
+        Column(modifier = Modifier.padding(14.dp)) {
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-              Text(
-                text = "ACTIVE TOTALITY SYMPTOMS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = ClinicalTerracotta,
-                letterSpacing = 1.sp
-              )
-              Spacer(modifier = Modifier.width(6.dp))
               Surface(
                 color = ClinicalTerracotta,
-                shape = CircleShape
+                shape = RoundedCornerShape(8.dp)
               ) {
                 Text(
-                  text = "${totalityItems.size}",
+                  text = "Symptom ${index + 1}",
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Bold,
                   color = Color.White,
+                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+              }
+              Spacer(modifier = Modifier.width(8.dp))
+              Surface(
+                color = LinenSurface,
+                shape = RoundedCornerShape(6.dp)
+              ) {
+                Text(
+                  text = "${item.chapter} • ${item.miasm}",
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = WarmCharcoal.copy(alpha = 0.8f),
                   modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                 )
               }
             }
+
+            IconButton(
+              onClick = { onRemoveRubric(item.rubricId) },
+              modifier = Modifier.size(28.dp)
+            ) {
+              Icon(
+                Icons.Default.Delete,
+                contentDescription = "Remove symptom",
+                tint = ClinicalTerracotta.copy(alpha = 0.7f),
+                modifier = Modifier.size(18.dp)
+              )
+            }
           }
 
-          if (totalityItems.isEmpty()) {
+          Spacer(modifier = Modifier.height(8.dp))
+
+          Text(
+            text = item.rubricName,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = WarmCharcoal
+          )
+
+          if (item.modalityNote.isNotBlank()) {
             Text(
-              text = "No rubrics selected yet. Select from the automatic Kent rubric matches below.",
+              text = item.modalityNote,
               fontSize = 12.sp,
-              color = WarmCharcoal.copy(alpha = 0.6f),
-              modifier = Modifier.padding(top = 6.dp)
+              color = WarmCharcoal.copy(alpha = 0.65f),
+              modifier = Modifier.padding(top = 2.dp)
             )
-          } else {
-            Spacer(modifier = Modifier.height(8.dp))
-            totalityItems.forEach { item ->
-              TotalityItemRow(
-                item = item,
-                onIntensityChange = { onUpdateIntensity(item.rubricId, it) },
-                onRemove = { onRemoveRubric(item.rubricId) }
-              )
-              Spacer(modifier = Modifier.height(4.dp))
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Intensity / Weight:",
+              fontSize = 12.sp,
+              color = WarmCharcoal.copy(alpha = 0.7f)
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              listOf(1 to "1 (Mild)", 2 to "2 (Mod)", 3 to "3 (Key)").forEach { (grade, label) ->
+                val isSelected = item.userIntensity == grade
+                Surface(
+                  color = if (isSelected) ClinicalTerracotta else LinenSurface,
+                  shape = RoundedCornerShape(6.dp),
+                  modifier = Modifier
+                    .clickable { onUpdateIntensity(item.rubricId, grade) }
+                ) {
+                  Text(
+                    text = label,
+                    fontSize = 10.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) Color.White else WarmCharcoal,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
+                  )
+                }
+              }
             }
           }
         }
       }
     }
 
-    // Rubric Suggestion Header
+    // ACTIVE INPUT ROW FOR THE NEXT SYMPTOM
     item {
-      Text(
-        text = if (symptomSearchText.isNotBlank()) "Search Results for '$symptomSearchText'" else "Suggested Kent Rubrics for this Case",
-        fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        color = WarmCharcoal
-      )
+      val nextNumber = totalityItems.size + 1
+      Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, ClinicalTerracotta),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+              color = ClinicalTerracotta,
+              shape = RoundedCornerShape(8.dp)
+            ) {
+              Text(
+                text = "Symptom $nextNumber",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+              )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              text = if (nextNumber == 1) "Enter first totality symptom:" else "Enter next symptom (Symptom $nextNumber):",
+              fontSize = 13.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = WarmCharcoal
+            )
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          OutlinedTextField(
+            value = currentSymptomText,
+            onValueChange = { currentSymptomText = it },
+            placeholder = { Text("Type symptom (e.g. Throbbing headache < sun, thirst for cold water)...") },
+            singleLine = true,
+            modifier = Modifier
+              .fillMaxWidth()
+              .onKeyEvent { keyEvent ->
+                if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyUp) {
+                  confirmAndAdvanceSymptom()
+                  true
+                } else {
+                  false
+                }
+              }
+              .testTag("totality_symptom_input"),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { confirmAndAdvanceSymptom() }),
+            trailingIcon = {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                if (currentSymptomText.isNotBlank()) {
+                  IconButton(onClick = { currentSymptomText = "" }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                  }
+                }
+                IconButton(
+                  onClick = { confirmAndAdvanceSymptom() },
+                  enabled = currentSymptomText.isNotBlank() || matchingRubrics.isNotEmpty()
+                ) {
+                  Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = "Confirm Symptom",
+                    tint = if (currentSymptomText.isNotBlank()) ClinicalTerracotta else Color.LightGray,
+                    modifier = Modifier.size(24.dp)
+                  )
+                }
+              }
+            },
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedBorderColor = ClinicalTerracotta,
+              unfocusedBorderColor = Color(0xFFD6CEBE),
+              focusedContainerColor = LinenSurface.copy(alpha = 0.5f),
+              unfocusedContainerColor = LinenSurface.copy(alpha = 0.3f)
+            )
+          )
+
+          // Related rubrics that open up while typing for this symptom
+          if (currentSymptomText.isNotBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text(
+                text = "RELATED RUBRICS FOR SYMPTOM $nextNumber",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = ClinicalTerracotta,
+                letterSpacing = 0.5.sp
+              )
+              Text(
+                text = "Tap or press Enter to lock",
+                fontSize = 11.sp,
+                color = WarmCharcoal.copy(alpha = 0.55f)
+              )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (matchingRubrics.isEmpty()) {
+              Surface(
+                color = LinenSurface,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Text(
+                  text = "Press Enter or tap ✓ to add '$currentSymptomText' and advance to Symptom ${nextNumber + 1}.",
+                  fontSize = 12.sp,
+                  color = WarmCharcoal.copy(alpha = 0.7f),
+                  modifier = Modifier.padding(10.dp)
+                )
+              }
+            } else {
+              Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                matchingRubrics.forEach { rubric ->
+                  Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = LinenSurface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5DECE)),
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .clickable {
+                        onAddRubric(rubric, currentIntensity)
+                        currentSymptomText = ""
+                      }
+                  ) {
+                    Row(
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                      Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                          text = rubric.rubricName,
+                          fontWeight = FontWeight.Bold,
+                          fontSize = 13.sp,
+                          color = WarmCharcoal
+                        )
+                        Text(
+                          text = "${rubric.chapter} • ${rubric.modality.ifBlank { rubric.miasm }}",
+                          fontSize = 11.sp,
+                          color = WarmCharcoal.copy(alpha = 0.65f)
+                        )
+                        Text(
+                          text = "Remedies: " + rubric.remedies.take(5).joinToString(", ") { "${it.remedyAbbr}(${it.grade})" },
+                          fontSize = 10.sp,
+                          color = ClinicalTerracotta,
+                          maxLines = 1,
+                          overflow = TextOverflow.Ellipsis
+                        )
+                      }
+
+                      Spacer(modifier = Modifier.width(8.dp))
+
+                      Button(
+                        onClick = {
+                          onAddRubric(rubric, currentIntensity)
+                          currentSymptomText = ""
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                      ) {
+                        Text("+ Select", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
-    // Matching Kent Rubrics List
-    items(searchResults) { rubric ->
-      val isAdded = totalityItems.any { it.rubricId == rubric.id }
-      KentRubricCard(
-        rubric = rubric,
-        isAdded = isAdded,
-        onAdd = { grade -> onAddRubric(rubric, grade) },
-        onRemove = { onRemoveRubric(rubric.id) }
-      )
+    // Totality Summary Count
+    if (totalityItems.isNotEmpty()) {
+      item {
+        Card(
+          shape = RoundedCornerShape(12.dp),
+          colors = CardDefaults.cardColors(containerColor = LinenSurface),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Total Symptoms in Totality:",
+              fontSize = 13.sp,
+              fontWeight = FontWeight.Medium,
+              color = WarmCharcoal
+            )
+            Surface(
+              color = ClinicalTerracotta,
+              shape = CircleShape
+            ) {
+              Text(
+                text = "${totalityItems.size}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+              )
+            }
+          }
+        }
+      }
     }
 
     // Navigation buttons
