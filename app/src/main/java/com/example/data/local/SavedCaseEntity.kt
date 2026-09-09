@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class SavedCaseEntity(
   @PrimaryKey(autoGenerate = true)
   val id: Long = 0,
+  val doctorName: String = "Dr. Rudra Goswami",
   val patientName: String,
   val patientAge: Int,
   val patientGender: String, // Male, Female, Child, Other

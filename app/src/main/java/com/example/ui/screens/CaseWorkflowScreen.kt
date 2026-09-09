@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -163,6 +164,7 @@ fun CaseWorkflowScreen(
     modifier = modifier
       .fillMaxSize()
       .background(LinenBackground)
+      .navigationBarsPadding()
   ) {
     // 1. Top Workflow Header
     Surface(
@@ -761,9 +763,10 @@ fun Step1PreliminaryView(
       onClick = onNext,
       modifier = Modifier
         .fillMaxWidth()
-        .height(50.dp)
+        .height(56.dp)
         .testTag("step1_next_button"),
       colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+      contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
       shape = RoundedCornerShape(12.dp)
     ) {
       Text("Next: Case Details", fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -771,7 +774,7 @@ fun Step1PreliminaryView(
       Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(48.dp))
   }
 }
 
@@ -1093,33 +1096,35 @@ fun Step2CaseDetailsView(
         onClick = onPrev,
         modifier = Modifier
           .weight(1f)
-          .height(48.dp),
+          .height(56.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         shape = RoundedCornerShape(12.dp)
       ) {
-        Text("Previous")
+        Text("Previous", fontSize = 14.sp)
       }
 
       Button(
         onClick = onNext,
         modifier = Modifier
           .weight(1.5f)
-          .height(48.dp)
+          .height(56.dp)
           .testTag("step2_next_button"),
         colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         shape = RoundedCornerShape(12.dp)
       ) {
-        Text("Next: Totality Rubrics", fontWeight = FontWeight.Bold)
+        Text("Next: Totality Rubrics", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Spacer(modifier = Modifier.width(6.dp))
         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
       }
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(48.dp))
   }
 }
 
 // -------------------------------------------------------------
-// STEP 3: TOTALITY OF SYMPTOMS (AUTO-SUGGESTIONS + RUBRICS)
+// STEP 3: TOTALITY OF SYMPTOMS (PURE SYMPTOM ADDITION)
 // -------------------------------------------------------------
 @Composable
 fun Step3TotalityView(
@@ -1132,41 +1137,22 @@ fun Step3TotalityView(
   onNext: () -> Unit,
   onPrev: () -> Unit
 ) {
-  // Current active symptom text being typed
   var currentSymptomText by remember { mutableStateOf("") }
   var currentIntensity by remember { mutableStateOf(2) }
 
-  // Filter matching rubrics for the currently typed symptom
-  val matchingRubrics = remember(currentSymptomText, allRubrics) {
-    val query = currentSymptomText.trim()
-    if (query.length >= 2) {
-      val tokens = query.lowercase().split(" ", ",", ";", "-", "/").filter { it.isNotBlank() }
-      allRubrics.filter { rubric ->
-        tokens.any { token ->
-          rubric.rubricName.contains(token, ignoreCase = true) ||
-          rubric.subRubric.contains(token, ignoreCase = true) ||
-          rubric.chapter.contains(token, ignoreCase = true) ||
-          rubric.modality.contains(token, ignoreCase = true)
-        }
-      }.sortedByDescending { rubric ->
-        tokens.count { token -> rubric.rubricName.contains(token, ignoreCase = true) }
-      }.take(10)
-    } else {
-      emptyList()
-    }
-  }
-
-  // When Enter is pressed on the current symptom:
-  // Lock in the top matched rubric or create clinical entry, clear text, and hide rubrics so the next symptom is ready below!
-  val confirmAndAdvanceSymptom = {
-    if (matchingRubrics.isNotEmpty()) {
-      val selected = matchingRubrics.first()
-      onAddRubric(selected, currentIntensity)
-      currentSymptomText = ""
-    } else if (currentSymptomText.isNotBlank()) {
-      val cleanName = currentSymptomText.trim()
-      val customRubric = KentRubric(
-        id = "sym_${System.currentTimeMillis()}",
+  // Add the current symptom to totality
+  val addCurrentSymptom = {
+    val cleanName = currentSymptomText.trim()
+    if (cleanName.isNotBlank()) {
+      val bestMatch = allRubrics.firstOrNull { rubric ->
+        val tokens = cleanName.lowercase().split(" ", ",", ";", "-").filter { it.length > 2 }
+        tokens.any { rubric.rubricName.contains(it, ignoreCase = true) }
+      }
+      val rubricToAdd = bestMatch?.copy(
+        id = "tot_${System.currentTimeMillis()}_${(0..999).random()}",
+        rubricName = cleanName
+      ) ?: KentRubric(
+        id = "tot_${System.currentTimeMillis()}_${(0..999).random()}",
         chapter = "Generalities",
         rubricName = cleanName,
         subRubric = "",
@@ -1174,11 +1160,13 @@ fun Step3TotalityView(
           RemedyGrade("Sulph", 2),
           RemedyGrade("Calc", 2),
           RemedyGrade("Lyc", 2),
-          RemedyGrade("Phos", 2)
+          RemedyGrade("Phos", 2),
+          RemedyGrade("Nux-v", 2),
+          RemedyGrade("Puls", 2)
         ),
         miasm = "Psora"
       )
-      onAddRubric(customRubric, currentIntensity)
+      onAddRubric(rubricToAdd, currentIntensity)
       currentSymptomText = ""
     }
   }
@@ -1200,7 +1188,7 @@ fun Step3TotalityView(
           color = WarmCharcoal
         )
         Text(
-          text = "Type Symptom 1 to open related rubrics. Press Enter or select to lock it in and open Symptom 2, until the last symptom.",
+          text = "Add clinical symptoms for the totality (Symptom 1, Symptom 2, etc.). Corresponding rubrics will be generated in Repertorization.",
           fontSize = 12.sp,
           color = WarmCharcoal.copy(alpha = 0.65f),
           modifier = Modifier.padding(top = 2.dp)
@@ -1208,7 +1196,7 @@ fun Step3TotalityView(
       }
     }
 
-    // LIST OF ALREADY CONFIRMED SYMPTOMS (Symptom 1, Symptom 2, ...)
+    // LIST OF RECORDED TOTALITY SYMPTOMS
     items(totalityItems.size) { index ->
       val item = totalityItems[index]
       Card(
@@ -1243,7 +1231,7 @@ fun Step3TotalityView(
                 shape = RoundedCornerShape(6.dp)
               ) {
                 Text(
-                  text = "${item.chapter} • ${item.miasm}",
+                  text = item.chapter.ifBlank { "Clinical Symptom" },
                   fontSize = 10.sp,
                   fontWeight = FontWeight.Medium,
                   color = WarmCharcoal.copy(alpha = 0.8f),
@@ -1273,15 +1261,6 @@ fun Step3TotalityView(
             fontWeight = FontWeight.Bold,
             color = WarmCharcoal
           )
-
-          if (item.modalityNote.isNotBlank()) {
-            Text(
-              text = item.modalityNote,
-              fontSize = 12.sp,
-              color = WarmCharcoal.copy(alpha = 0.65f),
-              modifier = Modifier.padding(top = 2.dp)
-            )
-          }
 
           Spacer(modifier = Modifier.height(10.dp))
 
@@ -1320,7 +1299,7 @@ fun Step3TotalityView(
       }
     }
 
-    // ACTIVE INPUT ROW FOR THE NEXT SYMPTOM
+    // ACTIVE INPUT CARD FOR NEXT SYMPTOM
     item {
       val nextNumber = totalityItems.size + 1
       Card(
@@ -1358,13 +1337,13 @@ fun Step3TotalityView(
           OutlinedTextField(
             value = currentSymptomText,
             onValueChange = { currentSymptomText = it },
-            placeholder = { Text("Type symptom (e.g. Throbbing headache < sun, thirst for cold water)...") },
+            placeholder = { Text("e.g. Throbbing right sided headache < heat, thirst for ice cold water...") },
             singleLine = true,
             modifier = Modifier
               .fillMaxWidth()
               .onKeyEvent { keyEvent ->
                 if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyUp) {
-                  confirmAndAdvanceSymptom()
+                  addCurrentSymptom()
                   true
                 } else {
                   false
@@ -1372,24 +1351,11 @@ fun Step3TotalityView(
               }
               .testTag("totality_symptom_input"),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { confirmAndAdvanceSymptom() }),
+            keyboardActions = KeyboardActions(onDone = { addCurrentSymptom() }),
             trailingIcon = {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                if (currentSymptomText.isNotBlank()) {
-                  IconButton(onClick = { currentSymptomText = "" }) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
-                  }
-                }
-                IconButton(
-                  onClick = { confirmAndAdvanceSymptom() },
-                  enabled = currentSymptomText.isNotBlank() || matchingRubrics.isNotEmpty()
-                ) {
-                  Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = "Confirm Symptom",
-                    tint = if (currentSymptomText.isNotBlank()) ClinicalTerracotta else Color.LightGray,
-                    modifier = Modifier.size(24.dp)
-                  )
+              if (currentSymptomText.isNotBlank()) {
+                IconButton(onClick = { currentSymptomText = "" }) {
+                  Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                 }
               }
             },
@@ -1402,110 +1368,59 @@ fun Step3TotalityView(
             )
           )
 
-          // Related rubrics that open up while typing for this symptom
-          if (currentSymptomText.isNotBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Text(
-                text = "RELATED RUBRICS FOR SYMPTOM $nextNumber",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = ClinicalTerracotta,
-                letterSpacing = 0.5.sp
-              )
-              Text(
-                text = "Tap or press Enter to lock",
-                fontSize = 11.sp,
-                color = WarmCharcoal.copy(alpha = 0.55f)
-              )
-            }
+          Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (matchingRubrics.isEmpty()) {
-              Surface(
-                color = LinenSurface,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                Text(
-                  text = "Press Enter or tap ✓ to add '$currentSymptomText' and advance to Symptom ${nextNumber + 1}.",
-                  fontSize = 12.sp,
-                  color = WarmCharcoal.copy(alpha = 0.7f),
-                  modifier = Modifier.padding(10.dp)
-                )
-              }
-            } else {
-              Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                matchingRubrics.forEach { rubric ->
-                  Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = LinenSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE5DECE)),
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .clickable {
-                        onAddRubric(rubric, currentIntensity)
-                        currentSymptomText = ""
-                      }
-                  ) {
-                    Row(
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                      verticalAlignment = Alignment.CenterVertically,
-                      horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                      Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                          text = rubric.rubricName,
-                          fontWeight = FontWeight.Bold,
-                          fontSize = 13.sp,
-                          color = WarmCharcoal
-                        )
-                        Text(
-                          text = "${rubric.chapter} • ${rubric.modality.ifBlank { rubric.miasm }}",
-                          fontSize = 11.sp,
-                          color = WarmCharcoal.copy(alpha = 0.65f)
-                        )
-                        Text(
-                          text = "Remedies: " + rubric.remedies.take(5).joinToString(", ") { "${it.remedyAbbr}(${it.grade})" },
-                          fontSize = 10.sp,
-                          color = ClinicalTerracotta,
-                          maxLines = 1,
-                          overflow = TextOverflow.Ellipsis
-                        )
-                      }
-
-                      Spacer(modifier = Modifier.width(8.dp))
-
-                      Button(
-                        onClick = {
-                          onAddRubric(rubric, currentIntensity)
-                          currentSymptomText = ""
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                      ) {
-                        Text("+ Select", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                      }
-                    }
-                  }
+          // Intensity selection chips for the symptom being added
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Intensity Grade:",
+              fontSize = 12.sp,
+              color = WarmCharcoal.copy(alpha = 0.7f)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              listOf(1 to "+1 Mild", 2 to "+2 Mod", 3 to "+3 Key").forEach { (grade, label) ->
+                val isSel = currentIntensity == grade
+                Surface(
+                  color = if (isSel) ClinicalTerracotta else LinenSurface,
+                  shape = RoundedCornerShape(6.dp),
+                  modifier = Modifier.clickable { currentIntensity = grade }
+                ) {
+                  Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSel) Color.White else WarmCharcoal,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                  )
                 }
               }
             }
+          }
+
+          Spacer(modifier = Modifier.height(12.dp))
+
+          Button(
+            onClick = { addCurrentSymptom() },
+            enabled = currentSymptomText.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(48.dp)
+          ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Add Symptom $nextNumber to Totality", fontWeight = FontWeight.Bold, fontSize = 14.sp)
           }
         }
       }
     }
 
-    // Totality Summary Count
+    // Totality Count Summary
     if (totalityItems.isNotEmpty()) {
       item {
         Card(
@@ -1521,7 +1436,7 @@ fun Step3TotalityView(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = "Total Symptoms in Totality:",
+              text = "Total Symptoms Recorded in Totality:",
               fontSize = 13.sp,
               fontWeight = FontWeight.Medium,
               color = WarmCharcoal
@@ -1543,9 +1458,9 @@ fun Step3TotalityView(
       }
     }
 
-    // Navigation buttons
+    // Navigation buttons - enlarged to prevent text cutoff
     item {
-      Spacer(modifier = Modifier.height(10.dp))
+      Spacer(modifier = Modifier.height(12.dp))
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1554,27 +1469,29 @@ fun Step3TotalityView(
           onClick = onPrev,
           modifier = Modifier
             .weight(1f)
-            .height(48.dp),
+            .height(56.dp),
+          contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
           shape = RoundedCornerShape(12.dp)
         ) {
-          Text("Previous")
+          Text("Previous", fontSize = 14.sp)
         }
 
         Button(
           onClick = onNext,
           modifier = Modifier
             .weight(1.5f)
-            .height(48.dp)
+            .height(56.dp)
             .testTag("step3_next_button"),
           colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+          contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
           shape = RoundedCornerShape(12.dp)
         ) {
-          Text("Next: Repertorization", fontWeight = FontWeight.Bold)
+          Text("Next: Repertorization", fontWeight = FontWeight.Bold, fontSize = 15.sp)
           Spacer(modifier = Modifier.width(6.dp))
           Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
         }
       }
-      Spacer(modifier = Modifier.height(28.dp))
+      Spacer(modifier = Modifier.height(48.dp))
     }
   }
 }
@@ -1596,7 +1513,7 @@ fun Step4RepertorizationView(
   var selectedChapter by remember { mutableStateOf("All") }
   var showManualKentBrowser by remember { mutableStateOf(false) }
 
-  val filteredRubrics = remember(repertorySearchQuery, selectedChapter) {
+  val filteredRubrics = remember(repertorySearchQuery, selectedChapter, allRubrics) {
     allRubrics.filter { rubric ->
       val matchesChapter = selectedChapter == "All" || rubric.chapter.equals(selectedChapter, ignoreCase = true)
       val matchesQuery = repertorySearchQuery.isBlank() ||
@@ -1625,19 +1542,152 @@ fun Step4RepertorizationView(
           color = WarmCharcoal
         )
         Text(
-          text = "Search symptoms or manually browse complete Kent Repertory chapters to add rubrics.",
+          text = "Auto rubrics identified from totality symptoms, complete Kent database search, and classical scoring.",
           fontSize = 12.sp,
           color = WarmCharcoal.copy(alpha = 0.65f)
         )
       }
     }
 
-    // Top Repertorization Search Bar
+    // 1. AUTO RUBRICS FOR EACH SYMPTOM IN TOTALITY
+    if (totalityItems.isNotEmpty()) {
+      item {
+        Card(
+          shape = RoundedCornerShape(16.dp),
+          colors = CardDefaults.cardColors(containerColor = Color.White),
+          border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2DACC)),
+          elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Default.LocalHospital, contentDescription = null, tint = ClinicalTerracotta, modifier = Modifier.size(20.dp))
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                text = "Auto Rubrics for Totality Symptoms",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
+                color = WarmCharcoal
+              )
+            }
+            Text(
+              text = "Kent rubrics automatically matched for each clinical symptom:",
+              fontSize = 11.sp,
+              color = WarmCharcoal.copy(alpha = 0.6f),
+              modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
+            )
+
+            totalityItems.forEachIndexed { sIndex, symptom ->
+              val symptomText = symptom.rubricName
+              val symptomTokens = symptomText.lowercase().split(" ", ",", ";", "-", "/").filter { it.length > 2 }
+              val suggestedRubrics = allRubrics.filter { rubric ->
+                symptomTokens.any { t ->
+                  rubric.rubricName.contains(t, ignoreCase = true) ||
+                  rubric.subRubric.contains(t, ignoreCase = true) ||
+                  rubric.modality.contains(t, ignoreCase = true)
+                }
+              }.take(3)
+
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(vertical = 5.dp)
+                  .background(LinenSurface, RoundedCornerShape(10.dp))
+                  .padding(10.dp)
+              ) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    text = "Symptom ${sIndex + 1}: $symptomText",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ClinicalTerracotta
+                  )
+                  Surface(
+                    color = ClinicalTerracotta.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(4.dp)
+                  ) {
+                    Text(
+                      text = "Weight: +${symptom.userIntensity}",
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = ClinicalTerracotta,
+                      modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                  }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                if (suggestedRubrics.isEmpty()) {
+                  Text(
+                    text = "• Active in repertorization (${symptom.chapter.ifBlank { "Generalities" }})",
+                    fontSize = 11.sp,
+                    color = WarmCharcoal.copy(alpha = 0.7f)
+                  )
+                } else {
+                  suggestedRubrics.forEach { rubric ->
+                    val isAlreadyAdded = totalityItems.any { it.rubricId == rubric.id }
+                    Row(
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
+                        .background(Color.White, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                          text = rubric.rubricName,
+                          fontSize = 11.sp,
+                          fontWeight = FontWeight.SemiBold,
+                          color = WarmCharcoal
+                        )
+                        Text(
+                          text = "${rubric.chapter} • ${rubric.remedies.size} remedies",
+                          fontSize = 10.sp,
+                          color = WarmCharcoal.copy(alpha = 0.6f)
+                        )
+                      }
+                      if (isAlreadyAdded) {
+                        Text(
+                          text = "✓ Included",
+                          fontSize = 10.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = SageMiasm
+                        )
+                      } else {
+                        Button(
+                          onClick = { onAddRubric(rubric, symptom.userIntensity) },
+                          colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+                          shape = RoundedCornerShape(6.dp),
+                          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                          modifier = Modifier.height(28.dp)
+                        ) {
+                          Text("+ Add Rubric", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Top Repertorization Search Bar (Full Kent Database)
     item {
       OutlinedTextField(
         value = repertorySearchQuery,
         onValueChange = { repertorySearchQuery = it },
-        placeholder = { Text("Search repertory symptoms / rubrics...") },
+        placeholder = { Text("Search complete Kent Repertory rubrics...") },
         leadingIcon = {
           Icon(Icons.Default.Search, contentDescription = null, tint = ClinicalTerracotta)
         },
@@ -1677,7 +1727,7 @@ fun Step4RepertorizationView(
           Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
           Spacer(modifier = Modifier.width(6.dp))
           Text(
-            if (showManualKentBrowser) "Hide Kent Repertory Browser" else "📖 Manual Add: Complete Kent Repertory",
+            if (showManualKentBrowser) "Hide Kent Repertory Browser" else "📖 Browse Complete Kent Repertory (74,000+ Rubrics)",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
           )
@@ -1734,7 +1784,7 @@ fun Step4RepertorizationView(
             Spacer(modifier = Modifier.height(4.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-              filteredRubrics.take(12).forEach { rubric ->
+              filteredRubrics.take(15).forEach { rubric ->
                 val isAdded = totalityItems.any { it.rubricId == rubric.id }
                 Row(
                   modifier = Modifier
@@ -1880,9 +1930,9 @@ fun Step4RepertorizationView(
       }
     }
 
-    // Navigation buttons
+    // Navigation buttons - enlarged to prevent text cutoff
     item {
-      Spacer(modifier = Modifier.height(10.dp))
+      Spacer(modifier = Modifier.height(12.dp))
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1891,27 +1941,29 @@ fun Step4RepertorizationView(
           onClick = onPrev,
           modifier = Modifier
             .weight(1f)
-            .height(48.dp),
+            .height(56.dp),
+          contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
           shape = RoundedCornerShape(12.dp)
         ) {
-          Text("Previous")
+          Text("Previous", fontSize = 14.sp)
         }
 
         Button(
           onClick = onNext,
           modifier = Modifier
             .weight(1.5f)
-            .height(48.dp)
+            .height(56.dp)
             .testTag("step4_next_button"),
           colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+          contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
           shape = RoundedCornerShape(12.dp)
         ) {
-          Text("Next: Prescription", fontWeight = FontWeight.Bold)
+          Text("Next: Prescription", fontWeight = FontWeight.Bold, fontSize = 15.sp)
           Spacer(modifier = Modifier.width(6.dp))
           Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
         }
       }
-      Spacer(modifier = Modifier.height(28.dp))
+      Spacer(modifier = Modifier.height(48.dp))
     }
   }
 }
@@ -2100,10 +2152,11 @@ fun Step5PrescriptionView(
         onClick = onPrev,
         modifier = Modifier
           .weight(1f)
-          .height(48.dp),
+          .height(56.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         shape = RoundedCornerShape(12.dp)
       ) {
-        Text("Previous")
+        Text("Previous", fontSize = 14.sp)
       }
 
       Button(
@@ -2113,14 +2166,16 @@ fun Step5PrescriptionView(
         },
         modifier = Modifier
           .weight(1.5f)
-          .height(48.dp)
+          .height(56.dp)
           .testTag("step5_next_button"),
         colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         shape = RoundedCornerShape(12.dp)
       ) {
         Text(
           text = if (isAcute) "💾 Save Case to Library" else "Next: Follow Up",
-          fontWeight = FontWeight.Bold
+          fontWeight = FontWeight.Bold,
+          fontSize = 15.sp
         )
         if (!isAcute) {
           Spacer(modifier = Modifier.width(6.dp))
@@ -2129,7 +2184,7 @@ fun Step5PrescriptionView(
       }
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(48.dp))
   }
 }
 
@@ -2258,9 +2313,10 @@ fun Step6FollowUpView(
       onClick = onSaveCase,
       modifier = Modifier
         .fillMaxWidth()
-        .height(52.dp)
+        .height(56.dp)
         .testTag("save_case_button"),
       colors = ButtonDefaults.buttonColors(containerColor = ClinicalTerracotta),
+      contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
       shape = RoundedCornerShape(14.dp)
     ) {
       Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
@@ -2272,13 +2328,14 @@ fun Step6FollowUpView(
       onClick = onPrev,
       modifier = Modifier
         .fillMaxWidth()
-        .height(46.dp),
+        .height(56.dp),
+      contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
       shape = RoundedCornerShape(12.dp)
     ) {
-      Text("Back to Prescription")
+      Text("Back to Prescription", fontSize = 14.sp)
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(48.dp))
   }
 }
 

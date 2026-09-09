@@ -144,7 +144,7 @@ data class UiNotification(
 class RepertoryViewModel(application: Application) : AndroidViewModel(application) {
 
   private val database = AppDatabase.getDatabase(application)
-  val repository = RepertoryRepository(database.savedCaseDao())
+  val repository = RepertoryRepository(database.savedCaseDao(), database.kentRubricDao())
   private val prefs = application.getSharedPreferences("rootchart_local_storage", android.content.Context.MODE_PRIVATE)
 
   // Navigation - start at Login as requested
@@ -189,10 +189,15 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
   val browserRubrics: StateFlow<List<KentRubric>> = _browserRubrics.asStateFlow()
 
   init {
-    viewModelScope.launch {
+    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
       val loaded = KentRubricDataLoader.loadAllRubrics(application)
       repository.setLoadedRubrics(loaded)
-      _browserRubrics.value = repository.searchRubrics(_searchQuery.value, _selectedChapter.value)
+      val dbRubrics = repository.searchDatabaseRubrics("", "All", 150)
+      if (dbRubrics.isNotEmpty()) {
+        _browserRubrics.value = dbRubrics
+      } else {
+        _browserRubrics.value = repository.searchRubrics(_searchQuery.value, _selectedChapter.value)
+      }
     }
   }
 
@@ -220,13 +225,15 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
   private val _librarySearchQuery = MutableStateFlow("")
   val librarySearchQuery: StateFlow<String> = _librarySearchQuery.asStateFlow()
 
-  // Room Database Cases
+  // Room Database Cases - strictly filtered by logged in clinician
   val savedCases: StateFlow<List<SavedCaseEntity>> = combine(
     repository.getAllSavedCases(),
-    _librarySearchQuery
-  ) { cases, query ->
-    if (query.isBlank()) cases
-    else cases.filter {
+    _librarySearchQuery,
+    _practitionerProfile
+  ) { cases, query, profile ->
+    val doctorCases = cases.filter { it.doctorName.equals(profile.name, ignoreCase = true) }
+    if (query.isBlank()) doctorCases
+    else doctorCases.filter {
       it.patientName.contains(query, ignoreCase = true) ||
       it.chiefComplaint.contains(query, ignoreCase = true) ||
       it.prescribedRemedy.contains(query, ignoreCase = true)
@@ -276,7 +283,12 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
   }
 
   private fun updateBrowserRubrics() {
-    _browserRubrics.value = repository.searchRubrics(_searchQuery.value, _selectedChapter.value)
+    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+      val results = repository.searchDatabaseRubrics(_searchQuery.value, _selectedChapter.value, 150)
+      _browserRubrics.value = results.ifEmpty {
+        repository.searchRubrics(_searchQuery.value, _selectedChapter.value)
+      }
+    }
   }
 
   fun loginPractitioner(name: String, role: String) {
@@ -365,6 +377,7 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     val caseEntity = SavedCaseEntity(
+      doctorName = _practitionerProfile.value.name,
       patientName = currentInfo.name.ifBlank { "Anonymous Patient" },
       patientAge = currentInfo.age.toIntOrNull() ?: 30,
       patientGender = currentInfo.gender,
@@ -541,6 +554,7 @@ class RepertoryViewModel(application: Application) : AndroidViewModel(applicatio
         "Syph:${analysis.miasmBreakdown.syphilisPercent}% Tub:${analysis.miasmBreakdown.tubercularPercent}%)"
 
     val caseEntity = SavedCaseEntity(
+      doctorName = _practitionerProfile.value.name,
       patientName = currentInfo.name.ifBlank { "Anonymous Patient" },
       patientAge = currentInfo.age.toIntOrNull() ?: 30,
       patientGender = currentInfo.gender,

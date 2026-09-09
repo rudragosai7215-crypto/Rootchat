@@ -1,6 +1,8 @@
 package com.example.data.repository
 
 import com.example.data.local.KentRepertoryDataset
+import com.example.data.local.KentRubricDao
+import com.example.data.local.KentRubricEntity
 import com.example.data.local.MateriaMedicaDataset
 import com.example.data.local.SavedCaseDao
 import com.example.data.local.SavedCaseEntity
@@ -12,20 +14,43 @@ import com.example.data.model.RemedyScore
 import com.example.data.model.RepertorizationAnalysis
 import kotlinx.coroutines.flow.Flow
 
-class RepertoryRepository(private val savedCaseDao: SavedCaseDao) {
+class RepertoryRepository(
+  private val savedCaseDao: SavedCaseDao,
+  private val kentRubricDao: KentRubricDao? = null
+) {
 
   private var dynamicRubrics: List<KentRubric> = KentRepertoryDataset.rubrics
+
+  val kentChapters: List<String> = listOf(
+    "All", "Mind", "Vertigo", "Head", "Eye", "Vision", "Ear", "Hearing", "Nose",
+    "Face", "Mouth", "Teeth", "Throat", "External throat", "Stomach", "Abdomen",
+    "Rectum", "Stool", "Bladder", "Kidneys", "Prostate gland", "Urethra", "Urine",
+    "Genitalia male", "Genitalia female", "Larynx and trachea", "Respiration",
+    "Cough", "Expectoration", "Chest", "Back", "Chill", "Fever", "Perspiration",
+    "Skin", "Sleep", "Generalities"
+  )
 
   fun setLoadedRubrics(rubrics: List<KentRubric>) {
     dynamicRubrics = rubrics
   }
 
-  fun getChapters(): List<String> {
-    val dynamicChapters = dynamicRubrics.map { it.chapter }.distinct().sorted()
-    return listOf("All") + (dynamicChapters.ifEmpty { KentRepertoryDataset.chapters.filter { it != "All" } })
-  }
+  fun getChapters(): List<String> = kentChapters
 
   fun getAllRubrics(): List<KentRubric> = dynamicRubrics
+
+  suspend fun searchDatabaseRubrics(query: String, chapter: String = "All", limit: Int = 100): List<KentRubric> {
+    if (kentRubricDao == null) return searchRubrics(query, chapter)
+    val entities = if (chapter == "All" || chapter.isBlank()) {
+      kentRubricDao.searchRubrics(query, limit)
+    } else {
+      kentRubricDao.searchRubricsInChapter(chapter, query, limit)
+    }
+    return entities.map { it.toKentRubric() }
+  }
+
+  suspend fun getRubricCount(): Int {
+    return kentRubricDao?.getRubricsCount() ?: dynamicRubrics.size
+  }
 
   fun searchRubrics(query: String, chapter: String = "All"): List<KentRubric> {
     return dynamicRubrics.filter { rubric ->
@@ -40,7 +65,16 @@ class RepertoryRepository(private val savedCaseDao: SavedCaseDao) {
   }
 
   fun getRubricById(id: String): KentRubric? {
-    return dynamicRubrics.find { it.id == id } ?: KentRepertoryDataset.rubrics.find { it.id == id }
+    val found = dynamicRubrics.find { it.id == id } ?: KentRepertoryDataset.rubrics.find { it.id == id }
+    if (found != null) return found
+    val longId = id.toLongOrNull() ?: return null
+    return try {
+      kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+        kentRubricDao?.getRubricById(longId)?.toKentRubric()
+      }
+    } catch (_: Exception) {
+      null
+    }
   }
 
   fun getPresets(): List<KentRepertoryDataset.TotalityPreset> = KentRepertoryDataset.presets
@@ -143,7 +177,12 @@ class RepertoryRepository(private val savedCaseDao: SavedCaseDao) {
   // Room Database operations
   fun getAllSavedCases(): Flow<List<SavedCaseEntity>> = savedCaseDao.getAllCases()
 
+  fun getCasesForDoctor(doctorName: String): Flow<List<SavedCaseEntity>> = savedCaseDao.getCasesForDoctor(doctorName)
+
   fun searchSavedCases(query: String): Flow<List<SavedCaseEntity>> = savedCaseDao.searchCases(query)
+
+  fun searchCasesForDoctor(doctorName: String, query: String): Flow<List<SavedCaseEntity>> =
+    savedCaseDao.searchCasesForDoctor(doctorName, query)
 
   suspend fun saveCase(caseEntity: SavedCaseEntity): Long = savedCaseDao.insertCase(caseEntity)
 

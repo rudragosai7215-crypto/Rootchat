@@ -13,11 +13,17 @@ interface SavedCaseDao {
   @Query("SELECT * FROM saved_cases ORDER BY createdAtTimestamp DESC")
   fun getAllCases(): Flow<List<SavedCaseEntity>>
 
+  @Query("SELECT * FROM saved_cases WHERE doctorName = :doctorName ORDER BY createdAtTimestamp DESC")
+  fun getCasesForDoctor(doctorName: String): Flow<List<SavedCaseEntity>>
+
   @Query("SELECT * FROM saved_cases WHERE id = :caseId")
   suspend fun getCaseById(caseId: Long): SavedCaseEntity?
 
   @Query("SELECT * FROM saved_cases WHERE patientName LIKE '%' || :query || '%' OR chiefComplaint LIKE '%' || :query || '%' OR prescribedRemedy LIKE '%' || :query || '%' ORDER BY createdAtTimestamp DESC")
   fun searchCases(query: String): Flow<List<SavedCaseEntity>>
+
+  @Query("SELECT * FROM saved_cases WHERE doctorName = :doctorName AND (patientName LIKE '%' || :query || '%' OR chiefComplaint LIKE '%' || :query || '%' OR prescribedRemedy LIKE '%' || :query || '%') ORDER BY createdAtTimestamp DESC")
+  fun searchCasesForDoctor(doctorName: String, query: String): Flow<List<SavedCaseEntity>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertCase(caseEntity: SavedCaseEntity): Long
