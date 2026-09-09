@@ -1,0 +1,6 @@
+{
+  "name": "RootChart",
+  "description": "RootChart - Clinical Repertorization Studio for homeopathic practitioners and students. Kent's Repertory, Totality analysis, Repertorization Matrix, and Case Library.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
