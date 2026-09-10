@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">RootChart</string>
+    <string name="app_tagline">Clinical Repertorization Studio</string>
+    <string name="app_subtitle">Classical Wisdom. Modern Practice.</string>
 </resources>

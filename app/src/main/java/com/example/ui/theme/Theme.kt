@@ -1,76 +1,60 @@
 package com.example.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-  primary = TerracottaPrimaryDark,
-  onPrimary = TerracottaOnPrimaryDark,
-  primaryContainer = TerracottaContainerDark,
-  onPrimaryContainer = TerracottaOnContainerDark,
-  secondary = SecondaryOnContainerDark,
-  onSecondary = PaperSurfaceDark,
-  secondaryContainer = SecondaryContainerDark,
-  onSecondaryContainer = SecondaryOnContainerDark,
-  tertiary = GoldTertiaryLight,
-  onTertiary = GoldOnTertiaryLight,
-  tertiaryContainer = GoldContainerLight,
-  onTertiaryContainer = GoldOnContainerLight,
-  background = LinenBackgroundDark,
-  surface = PaperSurfaceDark,
-  surfaceVariant = CardBorderDark,
-  onSurface = CharcoalTextDark,
-  onSurfaceVariant = CharcoalMutedDark,
-  outline = CardBorderDark
+    primary = TerracottaLight,
+    onPrimary = Color.White,
+    primaryContainer = TerracottaContainer,
+    onPrimaryContainer = CreamIvoryText,
+    secondary = SageGreenLight,
+    onSecondary = Color.White,
+    secondaryContainer = SageGreenContainer,
+    onSecondaryContainer = CreamIvoryText,
+    background = DarkBgBase,
+    onBackground = CreamIvoryText,
+    surface = DarkGlassSurface,
+    onSurface = CreamIvoryText,
+    surfaceVariant = DarkGlassSurfaceVariant,
+    onSurfaceVariant = CreamIvoryMuted,
+    outline = DarkGlassBorder,
+    outlineVariant = DarkGlassBorderHighlight
 )
 
 private val LightColorScheme = lightColorScheme(
-  primary = TerracottaPrimaryLight,
-  onPrimary = TerracottaOnPrimaryLight,
-  primaryContainer = TerracottaContainerLight,
-  onPrimaryContainer = TerracottaOnContainerLight,
-  secondary = SecondaryWarmEarthLight,
-  onSecondary = SecondaryOnEarthLight,
-  secondaryContainer = SecondaryContainerLight,
-  onSecondaryContainer = SecondaryOnContainerLight,
-  tertiary = GoldTertiaryLight,
-  onTertiary = GoldOnTertiaryLight,
-  tertiaryContainer = GoldContainerLight,
-  onTertiaryContainer = GoldOnContainerLight,
-  background = LinenBackgroundLight,
-  surface = PaperSurfaceLight,
-  surfaceVariant = SecondaryContainerLight,
-  onSurface = CharcoalTextLight,
-  onSurfaceVariant = CharcoalMutedLight,
-  outline = CardBorderLight
+    primary = TerracottaPrimary,
+    onPrimary = Color.White,
+    primaryContainer = TerracottaContainer,
+    onPrimaryContainer = DarkBrownText,
+    secondary = SageGreenPrimary,
+    onSecondary = Color.White,
+    secondaryContainer = SageGreenContainer,
+    onSecondaryContainer = DarkBrownText,
+    background = LightBgBase,
+    onBackground = DarkBrownText,
+    surface = LightGlassSurface,
+    onSurface = DarkBrownText,
+    surfaceVariant = LightGlassSurfaceVariant,
+    onSurfaceVariant = DarkBrownMuted,
+    outline = LightGlassBorder,
+    outlineVariant = LightGlassBorderHighlight
 )
 
 @Composable
-fun MyApplicationTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // For distinct medical branding, we can use our branded colors by default or dynamic colors if enabled
-  dynamicColor: Boolean = false,
-  content: @Composable () -> Unit,
+fun RootChartTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
 ) {
-  val colorScheme = when {
-    dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-      val context = LocalContext.current
-      if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    }
-    darkTheme -> DarkColorScheme
-    else -> LightColorScheme
-  }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-  MaterialTheme(
-    colorScheme = colorScheme,
-    typography = Typography,
-    content = content
-  )
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
 }

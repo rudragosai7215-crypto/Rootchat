@@ -1,31 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Centered within 66dp safe zone (21dp-87dp) -->
-    <!-- White squircle card badge -->
-    <path
-        android:fillColor="#FFFDF9"
-        android:pathData="M38,28 C30,28 26,32 26,40 L26,68 C26,76 30,80 38,80 L70,80 C78,80 82,76 82,68 L82,40 C82,32 78,28 70,28 Z" />
-
-    <!-- Terracotta pulse waveform inside card -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#C85A32"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M32,54 L44,54 L48,42 L53,66 L58,46 L63,54 L76,54" />
-
-    <!-- Pulse peak node dot -->
-    <path
-        android:fillColor="#C85A32"
-        android:pathData="M48,42m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
-
-    <!-- Root bottom indicator dot -->
-    <path
-        android:fillColor="#E67E52"
-        android:pathData="M54,72m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="70dp"
+        android:height="70dp"
+        android:drawable="@drawable/img_rootchart_icon"
+        android:gravity="center" />
+</layer-list>
