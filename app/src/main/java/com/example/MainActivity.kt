@@ -56,6 +56,8 @@ class MainActivity : ComponentActivity() {
             val remedyCount by viewModel.remedyCount.collectAsState()
             val importProgress by viewModel.importProgress.collectAsState()
             val currentTab by viewModel.currentTab.collectAsState()
+            val isSaving by viewModel.isSaving.collectAsState()
+            val saveError by viewModel.saveError.collectAsState()
 
             // Auto-trigger repertory import on first launch if empty
             LaunchedEffect(rubricCount) {
@@ -85,9 +87,12 @@ class MainActivity : ComponentActivity() {
                         remedyCount = remedyCount,
                         onSaveCase = { updated -> viewModel.saveActiveCase(updated) },
                         onFinishCase = { completed -> viewModel.finishActiveCase(completed) },
-                        onCancel = { viewModel.closeActiveCase() },
+                        onCancel = { draft -> viewModel.closeActiveCase(draft) },
                         onImportPrompt = { viewModel.triggerRepertoryImport() },
-                        isDark = isDark
+                        isDark = isDark,
+                        isSaving = isSaving,
+                        saveError = saveError,
+                        onClearSaveError = { viewModel.clearSaveError() }
                     )
                 } else {
                     // Main Dashboard Scaffold

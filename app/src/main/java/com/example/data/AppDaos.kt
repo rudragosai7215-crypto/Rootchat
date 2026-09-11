@@ -133,11 +133,20 @@ interface CaseDao {
     @Query("SELECT COUNT(*) FROM clinical_cases")
     fun getTotalCaseCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM clinical_cases WHERE clinicianName = :clinician")
+    fun getTotalCaseCountForClinician(clinician: String): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE caseType = 'ACUTE'")
     fun getAcuteCaseCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM clinical_cases WHERE clinicianName = :clinician AND caseType = 'ACUTE'")
+    fun getAcuteCaseCountForClinician(clinician: String): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE caseType = 'CHRONIC'")
     fun getChronicCaseCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM clinical_cases WHERE clinicianName = :clinician AND caseType = 'CHRONIC'")
+    fun getChronicCaseCountForClinician(clinician: String): Flow<Int>
 
     @Query("DELETE FROM clinical_cases")
     suspend fun deleteAllCases()

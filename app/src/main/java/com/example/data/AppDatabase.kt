@@ -66,14 +66,22 @@ abstract class AppDatabase : RoomDatabase() {
                                             val isDark = profileCursor.getInt(3)
                                             val createdAt = profileCursor.getLong(4)
                                             db.execSQL(
-                                                "INSERT OR REPLACE INTO user_profile (id, clinicianName, role, isDarkMode, createdAt) VALUES (?, ?, ?, ?, ?)",
+                                                "INSERT OR IGNORE INTO user_profile (id, clinicianName, role, isDarkMode, createdAt) VALUES (?, ?, ?, ?, ?)",
                                                 arrayOf(id, name, role, isDark, createdAt)
                                             )
                                             profileCount++
                                         }
                                         profileCursor.close()
+                                        oldDb.close()
+                                    } catch (e: Exception) {
+                                        Log.w(TAG, "Profile migration skipped: ${e.message}")
+                                    }
+                                }
 
-                                        // Migrate existing clinical cases
+                                if (oldDbFile.exists()) {
+                                    try {
+                                        val oldDb = SQLiteDatabase.openDatabase(oldDbFile.path, null, SQLiteDatabase.OPEN_READONLY)
+                                        // Migrate existing clinical cases if present
                                         val casesCursor = oldDb.rawQuery("SELECT * FROM clinical_cases", null)
                                         val colNames = casesCursor.columnNames
                                         while (casesCursor.moveToNext()) {
@@ -88,13 +96,13 @@ abstract class AppDatabase : RoomDatabase() {
                                                     else -> null
                                                 }
                                             }
-                                            db.execSQL("INSERT OR REPLACE INTO clinical_cases ($cols) VALUES ($placeholders)", values)
+                                            db.execSQL("INSERT OR IGNORE INTO clinical_cases ($cols) VALUES ($placeholders)", values)
                                         }
                                         casesCursor.close()
                                         oldDb.close()
-                                        Log.d(TAG, "Successfully migrated existing cases and profile into v2 database")
+                                        Log.d(TAG, "Checked and migrated any legacy cases into v2 database")
                                     } catch (e: Exception) {
-                                        Log.w(TAG, "Old db migration skipped: ${e.message}")
+                                        Log.w(TAG, "Old db cases check skipped: ${e.message}")
                                     }
                                 }
                             } catch (e: Exception) {

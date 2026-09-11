@@ -23,34 +23,42 @@ object PdfExporter {
         selectedRubrics: List<SelectedRubric>,
         repertorizationResults: List<RepertorizationScore>
     ): File? {
-        val pdfDocument = PdfDocument()
-        val pageWidth = 595 // Standard A4 points (72 dpi)
-        val pageHeight = 842
-        var pageNumber = 1
+        val filename = "RootChart_Case_${case.patientName.replace("\\s+".toRegex(), "_")}_${System.currentTimeMillis()}.pdf"
+        val pdfDir = File(context.cacheDir, "case_reports")
+        if (!pdfDir.exists()) pdfDir.mkdirs()
+        val file = File(pdfDir, filename)
 
-        var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
-        var page = pdfDocument.startPage(pageInfo)
-        var canvas = page.canvas
+        var pdfDocument: PdfDocument? = null
+        try {
+            val doc = PdfDocument()
+            pdfDocument = doc
+            val pageWidth = 595 // Standard A4 points (72 dpi)
+            val pageHeight = 842
+            var pageNumber = 1
 
-        val paint = Paint().apply {
-            isAntiAlias = true
-        }
+            var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+            var page = doc.startPage(pageInfo)
+            var canvas = page.canvas
 
-        var y = 45f
-        val leftMargin = 40f
-        val rightMargin = 555f
-        val contentWidth = rightMargin - leftMargin
-
-        fun checkPageBreak(neededHeight: Float) {
-            if (y + neededHeight > pageHeight - 40f) {
-                pdfDocument.finishPage(page)
-                pageNumber++
-                pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
-                page = pdfDocument.startPage(pageInfo)
-                canvas = page.canvas
-                y = 45f
+            val paint = Paint().apply {
+                isAntiAlias = true
             }
-        }
+
+            var y = 45f
+            val leftMargin = 40f
+            val rightMargin = 555f
+            val contentWidth = rightMargin - leftMargin
+
+            fun checkPageBreak(neededHeight: Float) {
+                if (y + neededHeight > pageHeight - 40f) {
+                    doc.finishPage(page)
+                    pageNumber++
+                    pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                    page = doc.startPage(pageInfo)
+                    canvas = page.canvas
+                    y = 45f
+                }
+            }
 
         fun drawSectionHeader(title: String, accentColor: Int = 0xFFB5502F.toInt()) {
             checkPageBreak(32f)
@@ -227,26 +235,64 @@ object PdfExporter {
         }
 
         // Finish last page
-        pdfDocument.finishPage(page)
+        doc.finishPage(page)
 
-        // Save PDF to file
-        val filename = "RootChart_Case_${case.patientName.replace("\\s+".toRegex(), "_")}_${System.currentTimeMillis()}.pdf"
-        val pdfDir = File(context.cacheDir, "case_reports")
-        if (!pdfDir.exists()) pdfDir.mkdirs()
-        val file = File(pdfDir, filename)
-
+        FileOutputStream(file).use { out ->
+            doc.writeTo(out)
+        }
+        return file
+    } catch (e: Throwable) {
+        // Fallback: write text report so case details are preserved and exportable
         try {
-            FileOutputStream(file).use { out ->
-                pdfDocument.writeTo(out)
-            }
-            pdfDocument.close()
+            file.writeText(buildFallbackReport(case, selectedRubrics, repertorizationResults))
             return file
-        } catch (e: Exception) {
-            e.printStackTrace()
-            pdfDocument.close()
+        } catch (fallbackEx: Throwable) {
+            fallbackEx.printStackTrace()
             return null
         }
+    } finally {
+        try {
+            pdfDocument?.close()
+        } catch (_: Throwable) {}
     }
+}
+
+private fun buildFallbackReport(
+    case: CaseEntity,
+    selectedRubrics: List<SelectedRubric>,
+    repertorizationResults: List<RepertorizationScore>
+): String {
+    val sb = StringBuilder()
+    sb.appendLine("ROOTCHART CLINICAL CASE REPORT")
+    sb.appendLine("==================================================")
+    sb.appendLine("Patient: ${case.patientName}")
+    sb.appendLine("Age / Gender: ${case.patientAge} / ${case.patientGender}")
+    sb.appendLine("Case Type: ${case.caseType}")
+    sb.appendLine("Chief Complaint: ${case.chiefComplaint}")
+    if (case.clinicalDiagnosis.isNotBlank()) {
+        sb.appendLine("Diagnosis: ${case.clinicalDiagnosis}")
+    }
+    if (case.prescribedRemedy.isNotBlank()) {
+        sb.appendLine("Prescribed Remedy: ${case.prescribedRemedyFullName} (${case.prescribedRemedy}) ${case.potency}")
+        sb.appendLine("Dose / Repetition: ${case.dose} - ${case.repetition}")
+        if (case.instructions.isNotBlank()) {
+            sb.appendLine("Instructions: ${case.instructions}")
+        }
+    }
+    if (selectedRubrics.isNotEmpty()) {
+        sb.appendLine("\nSelected Rubrics (${selectedRubrics.size}):")
+        for (r in selectedRubrics) {
+            sb.appendLine("- [${r.chapter}] ${r.rubricText}")
+        }
+    }
+    if (repertorizationResults.isNotEmpty()) {
+        sb.appendLine("\nTop Repertorization Results:")
+        for (res in repertorizationResults.take(10)) {
+            sb.appendLine("- ${res.fullName} (${res.abbreviation}): Score ${res.score}, Coverage ${res.coverage}")
+        }
+    }
+    return sb.toString()
+}
 
     fun sharePdf(context: Context, file: File) {
         val uri: Uri = try {

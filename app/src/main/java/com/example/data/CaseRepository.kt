@@ -13,6 +13,11 @@ class CaseRepository(
     val acuteCount: Flow<Int> = caseDao.getAcuteCaseCount()
     val chronicCount: Flow<Int> = caseDao.getChronicCaseCount()
 
+    fun getCasesForClinician(clinician: String): Flow<List<CaseEntity>> = caseDao.getCasesForClinician(clinician)
+    fun getTotalCountForClinician(clinician: String): Flow<Int> = caseDao.getTotalCaseCountForClinician(clinician)
+    fun getAcuteCountForClinician(clinician: String): Flow<Int> = caseDao.getAcuteCaseCountForClinician(clinician)
+    fun getChronicCountForClinician(clinician: String): Flow<Int> = caseDao.getChronicCaseCountForClinician(clinician)
+
     fun getCaseById(id: String): Flow<CaseEntity?> = caseDao.getCaseById(id)
 
     suspend fun getCaseByIdSync(id: String): CaseEntity? = withContext(Dispatchers.IO) {

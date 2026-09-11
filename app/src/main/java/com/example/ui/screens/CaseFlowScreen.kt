@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -100,10 +101,13 @@ fun CaseFlowScreen(
     remedyCount: Int,
     onSaveCase: (CaseEntity) -> Unit,
     onFinishCase: (CaseEntity) -> Unit,
-    onCancel: () -> Unit,
+    onCancel: (CaseEntity?) -> Unit,
     onImportPrompt: () -> Unit,
     isDark: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSaving: Boolean = false,
+    saveError: String? = null,
+    onClearSaveError: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isAcute = initialCase.caseType.equals("ACUTE", ignoreCase = true)
@@ -113,9 +117,19 @@ fun CaseFlowScreen(
     var caseData by remember { mutableStateOf(initialCase) }
     var formData by remember(initialCase.id) { mutableStateOf(ClinicalFormData.fromCaseEntity(initialCase)) }
 
-    // Selected Rubrics State
-    var selectedRubrics by remember {
-        mutableStateOf(RepertoryRepository.parseSelectedRubrics(initialCase.selectedRubricsJson))
+    // Selected Rubrics State (strictly unique by rubric id)
+    var selectedRubrics by remember(initialCase.id) {
+        mutableStateOf(RepertoryRepository.parseSelectedRubrics(initialCase.selectedRubricsJson).distinctBy { it.id })
+    }
+
+    val handleAddRubric: (SelectedRubric) -> Unit = { rubric ->
+        if (selectedRubrics.none { it.id == rubric.id }) {
+            selectedRubrics = selectedRubrics + rubric
+        }
+    }
+
+    val handleRemoveRubric: (Long) -> Unit = { rubricId ->
+        selectedRubrics = selectedRubrics.filter { it.id != rubricId }
     }
 
     // Repertorization Results Cache
@@ -226,8 +240,7 @@ fun CaseFlowScreen(
                     IconButton(
                         onClick = {
                             val updated = updateCaseWithRubrics()
-                            onSaveCase(updated)
-                            onCancel()
+                            onCancel(updated)
                         },
                         modifier = Modifier.testTag("btn_close_case_flow")
                     ) {
@@ -257,10 +270,12 @@ fun CaseFlowScreen(
 
                     IconButton(
                         onClick = {
+                            if (isSaving) return@IconButton
                             val updated = updateCaseWithRubrics()
                             onSaveCase(updated)
                             Toast.makeText(context, "Case draft saved", Toast.LENGTH_SHORT).show()
                         },
+                        enabled = !isSaving,
                         modifier = Modifier.testTag("btn_save_case_draft")
                     ) {
                         Icon(
@@ -316,10 +331,8 @@ fun CaseFlowScreen(
                         formData = formData,
                         onUpdateForm = ::handleFormUpdate,
                         selectedRubrics = selectedRubrics,
-                        onAddRubric = { selectedRubrics = selectedRubrics + it },
-                        onRemoveRubric = { rubricId ->
-                            selectedRubrics = selectedRubrics.filter { it.id != rubricId }
-                        },
+                        onAddRubric = handleAddRubric,
+                        onRemoveRubric = handleRemoveRubric,
                         repertoryRepository = repertoryRepository,
                         repertorizationResults = repertorizationResults,
                         rubricCount = rubricCount,
@@ -332,10 +345,8 @@ fun CaseFlowScreen(
                         formData = formData,
                         onUpdateForm = ::handleFormUpdate,
                         selectedRubrics = selectedRubrics,
-                        onAddRubric = { selectedRubrics = selectedRubrics + it },
-                        onRemoveRubric = { rubricId ->
-                            selectedRubrics = selectedRubrics.filter { it.id != rubricId }
-                        },
+                        onAddRubric = handleAddRubric,
+                        onRemoveRubric = handleRemoveRubric,
                         repertoryRepository = repertoryRepository,
                         repertorizationResults = repertorizationResults,
                         rubricCount = rubricCount,
@@ -364,10 +375,12 @@ fun CaseFlowScreen(
                     if (currentStep > 0) {
                         OutlinedButton(
                             onClick = {
+                                if (isSaving) return@OutlinedButton
                                 val updated = updateCaseWithRubrics()
                                 onSaveCase(updated)
                                 currentStep--
                             },
+                            enabled = !isSaving,
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
                                 .weight(1f)
@@ -383,6 +396,7 @@ fun CaseFlowScreen(
                     // Continue / Finish Button
                     Button(
                         onClick = {
+                            if (isSaving) return@Button
                             val updated = updateCaseWithRubrics()
                             if (currentStep < totalSteps - 1) {
                                 onSaveCase(updated)
@@ -392,10 +406,10 @@ fun CaseFlowScreen(
                                     isCompleted = true,
                                     dateModified = System.currentTimeMillis()
                                 )
-                                onSaveCase(finishedCase)
                                 onFinishCase(finishedCase)
                             }
                         },
+                        enabled = !isSaving,
                         colors = ButtonDefaults.buttonColors(containerColor = accentColor),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
@@ -403,20 +417,47 @@ fun CaseFlowScreen(
                             .height(50.dp)
                             .testTag(if (currentStep < totalSteps - 1) "btn_step_continue" else "btn_finish_case")
                     ) {
-                        Text(
-                            text = if (currentStep < totalSteps - 1) "Continue" else "Save & Complete Case",
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            imageVector = if (currentStep < totalSteps - 1) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        if (isSaving && currentStep == totalSteps - 1) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Saving Case...", fontWeight = FontWeight.SemiBold, color = Color.White)
+                        } else {
+                            Text(
+                                text = if (currentStep < totalSteps - 1) "Continue" else "Save & Complete Case",
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = if (currentStep < totalSteps - 1) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
+            }
+
+            if (saveError != null) {
+                AlertDialog(
+                    onDismissRequest = onClearSaveError,
+                    title = {
+                        Text("Storage Error", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
+                    },
+                    text = {
+                        Text(saveError)
+                    },
+                    confirmButton = {
+                        Button(onClick = onClearSaveError) {
+                            Text("Dismiss")
+                        }
+                    }
+                )
             }
         }
     }
