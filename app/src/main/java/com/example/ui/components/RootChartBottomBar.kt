@@ -23,10 +23,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +54,7 @@ import com.example.ui.theme.TerracottaPrimary
 enum class NavTab {
     HOME,
     LIBRARY,
+    MATERIA_MEDICA,
     REPORTS,
     PROFILE
 }
@@ -117,19 +120,19 @@ fun RootChartBottomBar(
                 Spacer(modifier = Modifier.size(52.dp))
 
                 BottomNavItem(
-                    label = "Reports",
-                    selected = currentTab == NavTab.REPORTS,
-                    iconSelected = Icons.Filled.BarChart,
-                    iconUnselected = Icons.Outlined.BarChart,
+                    label = "Materia",
+                    selected = currentTab == NavTab.MATERIA_MEDICA,
+                    iconSelected = Icons.Filled.MenuBook,
+                    iconUnselected = Icons.Outlined.MenuBook,
                     activeColor = activeColor,
                     inactiveColor = inactiveColor,
-                    testTag = "nav_reports",
-                    onClick = { onTabSelected(NavTab.REPORTS) }
+                    testTag = "nav_materia_medica",
+                    onClick = { onTabSelected(NavTab.MATERIA_MEDICA) }
                 )
 
                 BottomNavItem(
                     label = "Profile",
-                    selected = currentTab == NavTab.PROFILE,
+                    selected = currentTab == NavTab.PROFILE || currentTab == NavTab.REPORTS,
                     iconSelected = Icons.Filled.Person,
                     iconUnselected = Icons.Outlined.Person,
                     activeColor = activeColor,

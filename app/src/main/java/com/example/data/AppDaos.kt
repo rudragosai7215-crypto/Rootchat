@@ -20,6 +20,9 @@ interface UserProfileDao {
 
     @Query("UPDATE user_profile SET isDarkMode = :isDark WHERE id = 1")
     suspend fun updateDarkMode(isDark: Boolean)
+
+    @Query("DELETE FROM user_profile")
+    suspend fun clearProfile()
 }
 
 @Dao
@@ -52,6 +55,23 @@ interface RubricDao {
     """)
     suspend fun searchRubricsTriple(term1: String, term2: String, term3: String, limit: Int = 40): List<RubricEntity>
 
+    @Query("""
+        SELECT * FROM kent_rubrics 
+        WHERE rubricText LIKE :pattern 
+        OR chapter LIKE :pattern
+        LIMIT :limit
+    """)
+    suspend fun searchRubricsByPattern(pattern: String, limit: Int = 40): List<RubricEntity>
+
+    @Query("""
+        SELECT * FROM kent_rubrics 
+        WHERE rubricText LIKE :prefix || '%' 
+        OR chapter LIKE :prefix || '%'
+        ORDER BY LENGTH(rubricText) ASC
+        LIMIT :limit
+    """)
+    suspend fun searchRubricsPrefix(prefix: String, limit: Int = 100): List<RubricEntity>
+
     @Query("SELECT COUNT(*) FROM kent_rubrics")
     fun getRubricCount(): Flow<Int>
 
@@ -64,8 +84,20 @@ interface RubricDao {
     @Query("SELECT * FROM kent_rubrics WHERE chapter = :chapter ORDER BY rubricText ASC LIMIT :limit OFFSET :offset")
     suspend fun getRubricsByChapter(chapter: String, limit: Int = 100, offset: Int = 0): List<RubricEntity>
 
-    @Query("SELECT * FROM kent_rubrics WHERE chapter = :chapter AND rubricText LIKE '%' || :query || '%' ORDER BY rubricText ASC LIMIT :limit")
-    suspend fun searchRubricsInChapter(chapter: String, query: String, limit: Int = 100): List<RubricEntity>
+    @Query("SELECT * FROM kent_rubrics WHERE chapter = :chapter AND rubricText LIKE '%' || :query || '%' ORDER BY rubricText ASC LIMIT :limit OFFSET :offset")
+    suspend fun searchRubricsInChapter(chapter: String, query: String, limit: Int = 100, offset: Int = 0): List<RubricEntity>
+
+    @Query("SELECT * FROM kent_rubrics WHERE chapter IN (:chapters) ORDER BY rubricText ASC LIMIT :limit OFFSET :offset")
+    suspend fun getRubricsByChapters(chapters: List<String>, limit: Int = 180, offset: Int = 0): List<RubricEntity>
+
+    @Query("SELECT * FROM kent_rubrics WHERE chapter IN (:chapters) AND rubricText LIKE '%' || :query || '%' ORDER BY rubricText ASC LIMIT :limit OFFSET :offset")
+    suspend fun searchRubricsInChapters(chapters: List<String>, query: String, limit: Int = 180, offset: Int = 0): List<RubricEntity>
+
+    @Query("SELECT COUNT(*) FROM kent_rubrics WHERE chapter IN (:chapters)")
+    suspend fun getRubricCountInChapters(chapters: List<String>): Int
+
+    @Query("SELECT COUNT(*) FROM kent_rubrics WHERE chapter IN (:chapters) AND rubricText LIKE '%' || :query || '%'")
+    suspend fun getSearchRubricCountInChapters(chapters: List<String>, query: String): Int
 
     @Query("SELECT * FROM kent_rubrics WHERE id = :id LIMIT 1")
     suspend fun getRubricById(id: Long): RubricEntity?
@@ -81,6 +113,9 @@ interface RubricDao {
 interface RemedyDao {
     @Query("SELECT * FROM remedy_names ORDER BY abbreviation ASC")
     fun getAllRemedies(): Flow<List<RemedyNameEntity>>
+
+    @Query("SELECT * FROM remedy_names ORDER BY abbreviation ASC")
+    suspend fun getAllRemediesSync(): List<RemedyNameEntity>
 
     @Query("SELECT * FROM remedy_names WHERE abbreviation = :abbr COLLATE NOCASE LIMIT 1")
     suspend fun getRemedyByAbbreviation(abbr: String): RemedyNameEntity?
@@ -108,9 +143,30 @@ interface RemedyDao {
 }
 
 @Dao
+interface WorkspaceDao {
+    @Query("SELECT * FROM clinician_workspaces WHERE clinicianName = :name COLLATE NOCASE LIMIT 1")
+    suspend fun getWorkspaceByName(name: String): ClinicianWorkspaceEntity?
+
+    @Query("SELECT * FROM clinician_workspaces ORDER BY lastLogin DESC")
+    fun getAllWorkspaces(): Flow<List<ClinicianWorkspaceEntity>>
+
+    @Query("SELECT DISTINCT clinicianName FROM clinician_workspaces ORDER BY lastLogin DESC")
+    fun getAllClinicianNames(): Flow<List<String>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWorkspace(workspace: ClinicianWorkspaceEntity)
+
+    @Query("UPDATE clinician_workspaces SET lastLogin = :time WHERE clinicianName = :name")
+    suspend fun updateLastLogin(name: String, time: Long = System.currentTimeMillis())
+}
+
+@Dao
 interface CaseDao {
     @Query("SELECT * FROM clinical_cases ORDER BY dateModified DESC")
     fun getAllCases(): Flow<List<CaseEntity>>
+
+    @Query("SELECT * FROM clinical_cases WHERE workspaceId = :workspaceId ORDER BY dateModified DESC")
+    fun getCasesForWorkspace(workspaceId: String): Flow<List<CaseEntity>>
 
     @Query("SELECT * FROM clinical_cases WHERE clinicianName = :clinician ORDER BY dateModified DESC")
     fun getCasesForClinician(clinician: String): Flow<List<CaseEntity>>
@@ -133,11 +189,17 @@ interface CaseDao {
     @Query("SELECT COUNT(*) FROM clinical_cases")
     fun getTotalCaseCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM clinical_cases WHERE workspaceId = :workspaceId")
+    fun getTotalCaseCountForWorkspace(workspaceId: String): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE clinicianName = :clinician")
     fun getTotalCaseCountForClinician(clinician: String): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE caseType = 'ACUTE'")
     fun getAcuteCaseCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM clinical_cases WHERE workspaceId = :workspaceId AND caseType = 'ACUTE'")
+    fun getAcuteCaseCountForWorkspace(workspaceId: String): Flow<Int>
 
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE clinicianName = :clinician AND caseType = 'ACUTE'")
     fun getAcuteCaseCountForClinician(clinician: String): Flow<Int>
@@ -145,8 +207,14 @@ interface CaseDao {
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE caseType = 'CHRONIC'")
     fun getChronicCaseCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM clinical_cases WHERE workspaceId = :workspaceId AND caseType = 'CHRONIC'")
+    fun getChronicCaseCountForWorkspace(workspaceId: String): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM clinical_cases WHERE clinicianName = :clinician AND caseType = 'CHRONIC'")
     fun getChronicCaseCountForClinician(clinician: String): Flow<Int>
+
+    @Query("SELECT DISTINCT clinicianName FROM clinical_cases WHERE clinicianName != '' ORDER BY clinicianName ASC")
+    fun getAllClinicians(): Flow<List<String>>
 
     @Query("DELETE FROM clinical_cases")
     suspend fun deleteAllCases()

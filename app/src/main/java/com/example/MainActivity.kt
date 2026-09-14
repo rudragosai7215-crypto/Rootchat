@@ -32,6 +32,7 @@ import com.example.ui.screens.EntryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.ReportsScreen
+import com.example.ui.screens.materiamedica.MateriaMedicaBrowserScreen
 import com.example.ui.theme.GlassBackgroundScaffold
 import com.example.ui.theme.RootChartTheme
 
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
             val chronicCount by viewModel.chronicCaseCount.collectAsState()
             val rubricCount by viewModel.rubricCount.collectAsState()
             val remedyCount by viewModel.remedyCount.collectAsState()
+            val knownClinicians by viewModel.knownClinicians.collectAsState()
             val importProgress by viewModel.importProgress.collectAsState()
             val currentTab by viewModel.currentTab.collectAsState()
             val isSaving by viewModel.isSaving.collectAsState()
@@ -66,15 +68,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            var hasEnteredStudio by remember { mutableStateOf(false) }
-
             RootChartTheme(darkTheme = isDark) {
-                if (userProfile == null && !hasEnteredStudio) {
+                if (userProfile == null) {
                     // Entry Screen for clinician registration
                     EntryScreen(
                         isDark = isDark,
+                        knownClinicians = knownClinicians,
                         onProfileCreated = { name, role ->
-                            hasEnteredStudio = true
                             viewModel.saveUserProfile(name, role)
                         }
                     )
@@ -166,6 +166,10 @@ fun MainDashboard(
                             onStartChronic = { viewModel.startNewCase("CHRONIC") },
                             onOpenCase = { id -> viewModel.openExistingCase(id) },
                             onViewAllLibrary = { onTabSelected(NavTab.LIBRARY) },
+                            onNavigateToReports = { onTabSelected(NavTab.REPORTS) },
+                            onNavigateToMateriaMedica = { onTabSelected(NavTab.MATERIA_MEDICA) },
+                            onNavigateToProfile = { onTabSelected(NavTab.PROFILE) },
+                            onToggleTheme = { viewModel.setDarkTheme(!isDark) },
                             isDark = isDark
                         )
 
@@ -187,6 +191,11 @@ fun MainDashboard(
                             isDark = isDark
                         )
 
+                        NavTab.MATERIA_MEDICA -> MateriaMedicaBrowserScreen(
+                            materiaMedicaRepository = viewModel.materiaMedicaRepository,
+                            isDark = isDark
+                        )
+
                         NavTab.PROFILE -> ProfileScreen(
                             userProfile = com.example.data.UserProfile(clinicianName = clinicianName, role = clinicianRole),
                             rubricCount = rubricCount,
@@ -195,7 +204,8 @@ fun MainDashboard(
                             onToggleTheme = { viewModel.setDarkTheme(it) },
                             onUpdateProfile = { name, role -> viewModel.saveUserProfile(name, role) },
                             onImportRepertory = { viewModel.triggerRepertoryImport() },
-                            importProgress = importProgress
+                            importProgress = importProgress,
+                            onLogout = { viewModel.logout() }
                         )
                     }
                 }

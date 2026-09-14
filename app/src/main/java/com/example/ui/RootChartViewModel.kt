@@ -8,7 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
 import com.example.data.CaseEntity
 import com.example.data.CaseRepository
+import com.example.data.ClinicianWorkspaceEntity
 import com.example.data.ImportProgress
+import com.example.data.MateriaMedicaRepository
 import com.example.data.RepertoryJsonImporter
 import com.example.data.RepertoryRepository
 import com.example.data.UserProfile
@@ -30,43 +32,40 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
     private val userProfileDao = db.userProfileDao()
     val caseRepository = CaseRepository(db.caseDao())
     val repertoryRepository = RepertoryRepository(db.rubricDao(), db.remedyDao())
+    val materiaMedicaRepository = MateriaMedicaRepository(db.materiaMedicaDao(), db.remedyDao())
 
     val userProfile: StateFlow<UserProfile?> = userProfileDao.getUserProfile()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val caseList: StateFlow<List<CaseEntity>> = userProfile.flatMapLatest { profile ->
-        val clinician = profile?.clinicianName
-        if (clinician.isNullOrBlank()) {
-            caseRepository.allCases
+        if (profile != null && profile.workspaceId.isNotBlank()) {
+            caseRepository.getCasesForWorkspace(profile.workspaceId)
         } else {
-            caseRepository.getCasesForClinician(clinician)
+            caseRepository.allCases
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val totalCaseCount: StateFlow<Int> = userProfile.flatMapLatest { profile ->
-        val clinician = profile?.clinicianName
-        if (clinician.isNullOrBlank()) {
-            caseRepository.totalCount
+        if (profile != null && profile.workspaceId.isNotBlank()) {
+            caseRepository.getTotalCountForWorkspace(profile.workspaceId)
         } else {
-            caseRepository.getTotalCountForClinician(clinician)
+            caseRepository.totalCount
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val acuteCaseCount: StateFlow<Int> = userProfile.flatMapLatest { profile ->
-        val clinician = profile?.clinicianName
-        if (clinician.isNullOrBlank()) {
-            caseRepository.acuteCount
+        if (profile != null && profile.workspaceId.isNotBlank()) {
+            caseRepository.getAcuteCountForWorkspace(profile.workspaceId)
         } else {
-            caseRepository.getAcuteCountForClinician(clinician)
+            caseRepository.acuteCount
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val chronicCaseCount: StateFlow<Int> = userProfile.flatMapLatest { profile ->
-        val clinician = profile?.clinicianName
-        if (clinician.isNullOrBlank()) {
-            caseRepository.chronicCount
+        if (profile != null && profile.workspaceId.isNotBlank()) {
+            caseRepository.getChronicCountForWorkspace(profile.workspaceId)
         } else {
-            caseRepository.getChronicCountForClinician(clinician)
+            caseRepository.chronicCount
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -75,6 +74,19 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
 
     val remedyCount: StateFlow<Int> = repertoryRepository.remedyCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val mmRemedyCount: StateFlow<Int> = materiaMedicaRepository.totalRemediesCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val mmSectionCount: StateFlow<Int> = materiaMedicaRepository.totalSectionsCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val knownClinicians: StateFlow<List<String>> = kotlinx.coroutines.flow.combine(
+        db.workspaceDao().getAllClinicianNames(),
+        caseRepository.allClinicians
+    ) { wsList, caseList ->
+        (wsList + caseList).distinct().filter { it.isNotBlank() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Dark Mode Theme preference with database persistence
     private val _isDarkTheme = MutableStateFlow(true)
@@ -88,6 +100,7 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
         }
+        checkAndImportLocalMateriaMedicaDump()
     }
 
     fun setDarkTheme(isDark: Boolean) {
@@ -140,9 +153,32 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
         val finalRole = if (role.isBlank()) "Doctor" else role
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val workspaceDao = db.workspaceDao()
+                val existingWs = workspaceDao.getWorkspaceByName(finalName)
+                val workspaceId = if (existingWs != null) {
+                    workspaceDao.updateLastLogin(finalName)
+                    existingWs.workspaceId
+                } else {
+                    val newWsId = UUID.randomUUID().toString()
+                    workspaceDao.insertWorkspace(
+                        ClinicianWorkspaceEntity(
+                            clinicianName = finalName,
+                            workspaceId = newWsId,
+                            role = finalRole
+                        )
+                    )
+                    newWsId
+                }
+
                 val currentDark = _isDarkTheme.value
                 userProfileDao.insertProfile(
-                    UserProfile(id = 1, clinicianName = finalName, role = finalRole, isDarkMode = currentDark)
+                    UserProfile(
+                        id = 1,
+                        workspaceId = workspaceId,
+                        clinicianName = finalName,
+                        role = finalRole,
+                        isDarkMode = currentDark
+                    )
                 )
             } catch (e: Exception) {
                 Log.e("RootChartVM", "Failed to save user profile", e)
@@ -150,10 +186,25 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun logout() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                userProfileDao.clearProfile()
+            } catch (e: Exception) {
+                Log.e("RootChartVM", "Failed to clear user profile on logout", e)
+            } finally {
+                _activeCase.value = null
+                _currentTab.value = com.example.ui.components.NavTab.HOME
+            }
+        }
+    }
+
     fun startNewCase(caseType: String) {
         val clinicianName = userProfile.value?.clinicianName?.ifBlank { "Dr. Clinician" } ?: "Dr. Clinician"
+        val wsId = userProfile.value?.workspaceId ?: "default_workspace"
         val newCase = CaseEntity(
             id = UUID.randomUUID().toString(),
+            workspaceId = wsId,
             caseType = caseType.uppercase(),
             clinicianName = clinicianName,
             dateCreated = System.currentTimeMillis(),
@@ -170,12 +221,18 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun saveActiveCase(caseEntity: CaseEntity, onResult: ((Boolean) -> Unit)? = null) {
-        _activeCase.value = caseEntity
+        val currentWs = userProfile.value?.workspaceId ?: "default_workspace"
+        val toSave = if (caseEntity.workspaceId.isBlank() || caseEntity.workspaceId == "default_workspace") {
+            caseEntity.copy(workspaceId = currentWs)
+        } else {
+            caseEntity
+        }
+        _activeCase.value = toSave
         viewModelScope.launch {
             _isSaving.value = true
             _saveError.value = null
             try {
-                caseRepository.saveCase(caseEntity)
+                caseRepository.saveCase(toSave)
                 _isSaving.value = false
                 onResult?.invoke(true)
             } catch (e: Exception) {
@@ -188,10 +245,16 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun finishActiveCase(caseEntity: CaseEntity, onResult: ((Boolean) -> Unit)? = null) {
+        val currentWs = userProfile.value?.workspaceId ?: "default_workspace"
+        val toSave = if (caseEntity.workspaceId.isBlank() || caseEntity.workspaceId == "default_workspace") {
+            caseEntity.copy(workspaceId = currentWs)
+        } else {
+            caseEntity
+        }
         viewModelScope.launch {
             _isSaving.value = true
             _saveError.value = null
-            val completed = caseEntity.copy(
+            val completed = toSave.copy(
                 isCompleted = true,
                 dateModified = System.currentTimeMillis()
             )
@@ -265,6 +328,57 @@ class RootChartViewModel(application: Application) : AndroidViewModel(applicatio
                 remedyDao = db.remedyDao(),
                 onProgress = { progress ->
                     _importProgress.value = progress
+                }
+            )
+        }
+    }
+
+    private val _mmImportStatus = MutableStateFlow<String?>(null)
+    val mmImportStatus: StateFlow<String?> = _mmImportStatus.asStateFlow()
+
+    private val _viewingMateriaMedicaRemedy = MutableStateFlow<String?>(null)
+    val viewingMateriaMedicaRemedy: StateFlow<String?> = _viewingMateriaMedicaRemedy.asStateFlow()
+
+    fun openMateriaMedica(abbreviation: String) {
+        _viewingMateriaMedicaRemedy.value = abbreviation
+    }
+
+    fun closeMateriaMedica() {
+        _viewingMateriaMedicaRemedy.value = null
+    }
+
+    fun importMateriaMedicaFromUri(uri: Uri) {
+        viewModelScope.launch {
+            _mmImportStatus.value = "Starting Boericke Materia Medica import..."
+            try {
+                val result = com.example.data.OorepMateriaMedicaImporter.importFromUri(
+                    context = getApplication(),
+                    uri = uri,
+                    materiaMedicaDao = db.materiaMedicaDao(),
+                    remedyDao = db.remedyDao(),
+                    onProgress = { progress: ImportProgress ->
+                        _mmImportStatus.value = progress.currentStatus
+                    }
+                )
+                _mmImportStatus.value = if (result.success) {
+                    "Import successful: ${result.remediesCount} remedies and ${result.sectionsCount} sections."
+                } else {
+                    "Import failed: ${result.message}"
+                }
+            } catch (e: Exception) {
+                _mmImportStatus.value = "Error during import: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    fun checkAndImportLocalMateriaMedicaDump() {
+        viewModelScope.launch {
+            com.example.data.OorepMateriaMedicaImporter.autoCheckAndImportWorkspaceFiles(
+                context = getApplication(),
+                materiaMedicaDao = db.materiaMedicaDao(),
+                remedyDao = db.remedyDao(),
+                onProgress = { progress: ImportProgress ->
+                    _mmImportStatus.value = progress.currentStatus
                 }
             )
         }

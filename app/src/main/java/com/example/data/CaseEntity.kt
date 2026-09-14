@@ -7,6 +7,7 @@ import java.util.UUID
 @Entity(tableName = "clinical_cases")
 data class CaseEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val workspaceId: String = "default_workspace",
     val clinicianName: String = "",
     val caseType: String, // "ACUTE" or "CHRONIC"
     val dateCreated: Long = System.currentTimeMillis(),

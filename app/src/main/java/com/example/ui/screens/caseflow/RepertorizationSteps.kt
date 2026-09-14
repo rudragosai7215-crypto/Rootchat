@@ -1,13 +1,17 @@
 package com.example.ui.screens.caseflow
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,19 +32,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.ui.screens.materiamedica.MateriaMedicaHighlightUtils
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -49,10 +61,13 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,10 +83,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.CaseEntity
 import com.example.data.ClinicalFormData
+import com.example.data.MateriaMedicaRepository
 import com.example.data.RepertorizationScore
 import com.example.data.RepertoryRepository
 import com.example.data.RubricEntity
 import com.example.data.SelectedRubric
+import com.example.ui.screens.materiamedica.MateriaMedicaViewerDialog
 import com.example.ui.theme.CreamIvoryMuted
 import com.example.ui.theme.CreamIvoryText
 import com.example.ui.theme.DarkBrownMuted
@@ -79,6 +96,8 @@ import com.example.ui.theme.DarkBrownText
 import com.example.ui.theme.DarkGlassBorder
 import com.example.ui.theme.GlassPanel
 import com.example.ui.theme.LightGlassBorder
+import com.example.ui.theme.SageGreenLight
+import com.example.ui.theme.SageGreenPrimary
 import com.example.ui.theme.TerracottaContainer
 import com.example.ui.theme.TerracottaLight
 import com.example.ui.theme.TerracottaPrimary
@@ -126,24 +145,75 @@ fun TotalityOfSymptomsStep(
     var liveSuggestions by remember { mutableStateOf<List<RubricEntity>>(emptyList()) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
 
-    LaunchedEffect(formData.totalityNotes, formData.symptomEvaluationList) {
+    LaunchedEffect(formData.totalityNotes, formData.symptomEvaluationList, formData.symptomAnalysisList) {
         searchJob?.cancel()
         searchJob = coroutineScope.launch {
             delay(350)
-            val keywords = mutableListOf<String>()
-            formData.symptomEvaluationList.forEach {
-                keywords.addAll(it.symptomText.split("\\s+".toRegex()).filter { w -> w.length > 3 })
-            }
-            if (keywords.isEmpty()) {
-                keywords.addAll(formData.totalityNotes.split("\\s+".toRegex()).filter { w -> w.length > 3 })
+
+            // 1. Extract complete symptom phrases from Totality
+            val exactPhrases = mutableListOf<String>()
+
+            // From symptom evaluation list
+            formData.symptomEvaluationList.forEach { item ->
+                val phrase = item.symptomText.trim()
+                if (phrase.length >= 3) exactPhrases.add(phrase)
             }
 
-            val found = mutableListOf<RubricEntity>()
-            for (word in keywords.distinct().take(4)) {
-                val res = repertoryRepository.searchRubrics(word)
-                found.addAll(res.take(3))
+            // From symptom analysis list if evaluation list is empty
+            if (exactPhrases.isEmpty()) {
+                formData.symptomAnalysisList.forEach { item ->
+                    val phrase = item.symptomText.trim()
+                    if (phrase.length >= 3) exactPhrases.add(phrase)
+                }
             }
-            liveSuggestions = found.distinctBy { it.id }.take(8)
+
+            // From totalityNotes lines (e.g. "1. Throbbing headache morning", "Anxiety night")
+            formData.totalityNotes.lines().forEach { line ->
+                val cleanedLine = line.replace("^\\s*(\\d+[.)\\-\\s]+|[-*•]\\s*)".toRegex(), "").trim()
+                if (cleanedLine.length >= 3 && !cleanedLine.startsWith("//")) {
+                    exactPhrases.add(cleanedLine)
+                }
+            }
+
+            // 2. Extract individual related words from those phrases
+            val relatedWords = mutableListOf<String>()
+            exactPhrases.forEach { phrase ->
+                val words = phrase.split("[^a-zA-Z0-9]+".toRegex())
+                    .map { it.lowercase().trim() }
+                    .filter { it.length >= 4 && it !in MateriaMedicaHighlightUtils.STOP_WORDS }
+                relatedWords.addAll(words)
+            }
+
+            val exactPhraseMatches = mutableListOf<RubricEntity>()
+            val wordLevelMatches = mutableListOf<RubricEntity>()
+
+            // Priority 1 (Highest): Search exact phrases from Totality
+            for (phrase in exactPhrases.distinct().take(5)) {
+                val results = repertoryRepository.searchRubrics(phrase)
+                val cleanPhrase = phrase.lowercase().replace("[-:,;./>]".toRegex(), " ").replace("\\s+".toRegex(), " ").trim()
+                for (rub in results) {
+                    val rubClean = rub.rubricText.lowercase().replace("[-:,;./>]".toRegex(), " ").replace("\\s+".toRegex(), " ").trim()
+                    if (rubClean.contains(cleanPhrase) || rub.rubricText.contains(phrase, ignoreCase = true)) {
+                        exactPhraseMatches.add(rub)
+                    } else {
+                        wordLevelMatches.add(rub)
+                    }
+                }
+            }
+
+            // Priority 2 (Lower priority): Search individual related words
+            for (word in relatedWords.distinct().take(6)) {
+                val results = repertoryRepository.searchRubrics(word)
+                wordLevelMatches.addAll(results.take(3))
+            }
+
+            // Reorder/reprioritize so exact phrase matches always come before word-level matches
+            val finalExact = exactPhraseMatches.distinctBy { it.id }
+            val finalWord = wordLevelMatches
+                .filter { wRub -> finalExact.none { it.id == wRub.id } }
+                .distinctBy { it.id }
+
+            liveSuggestions = (finalExact + finalWord).take(12)
         }
     }
 
@@ -263,8 +333,11 @@ fun RepertorizationStep(
     repertorizationResults: List<RepertorizationScore>,
     rubricCount: Int,
     remedyCount: Int,
-    isDark: Boolean
+    isDark: Boolean,
+    materiaMedicaRepository: MateriaMedicaRepository? = null,
+    caseEntity: CaseEntity? = null
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<RubricEntity>>(emptyList()) }
@@ -275,6 +348,11 @@ fun RepertorizationStep(
     var rubricForPreview by remember { mutableStateOf<RubricEntity?>(null) }
     var expandedRemedies by remember { mutableStateOf(setOf<String>()) }
     var differentiationPair by remember { mutableStateOf<Pair<RepertorizationScore, RepertorizationScore>?>(null) }
+    var viewingMateriaMedicaRemedy by remember { mutableStateOf<String?>(null) }
+    var viewingMateriaMedicaFullName by remember { mutableStateOf<String?>(null) }
+    var viewingTiedGroupDialog by remember { mutableStateOf<List<RepertorizationScore>?>(null) }
+
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     val textColor = if (isDark) CreamIvoryText else DarkBrownText
     val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
@@ -295,620 +373,906 @@ fun RepertorizationStep(
     }
 
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            // Header Row with Repertory Stats and Browse Repertory button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Tab Selector: Tab 0 = Select Rubrics, Tab 1 = Results
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                        color = if (isDark) TerracottaLight else TerracottaPrimary,
+                        height = 2.dp
+                    )
+                },
+                divider = {
+                    HorizontalDivider(
+                        color = if (isDark) Color(0x18FFFFFF) else Color(0x10000000),
+                        thickness = 0.8.dp
+                    )
+                }
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "HOMEOPATHIC REPERTORIZATION",
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        letterSpacing = 1.4.sp,
-                        color = if (isDark) TerracottaLight else TerracottaPrimary
-                    )
-                    Text(
-                        text = "$rubricCount rubrics · $remedyCount remedies in database",
-                        fontSize = 11.sp,
-                        color = subtextColor
-                    )
-                }
-
-                Button(
-                    onClick = { showBrowseDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("btn_browse_repertory")
-                ) {
-                    Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Browse Chapters", fontSize = 12.sp)
-                }
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Default.ListAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = "Select Rubrics (${selectedRubrics.size})",
+                                fontSize = 13.sp,
+                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    },
+                    selectedContentColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                    unselectedContentColor = subtextColor,
+                    modifier = Modifier.testTag("tab_select_rubrics")
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = "Results (${repertorizationResults.size})",
+                                fontSize = 13.sp,
+                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    },
+                    selectedContentColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                    unselectedContentColor = subtextColor,
+                    modifier = Modifier.testTag("tab_results")
+                )
             }
 
-            // Carried-over & Selected Rubrics Chips Area
-            Text(
-                text = "SELECTED CASE RUBRICS (${selectedRubrics.size})",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                color = if (isDark) TerracottaLight else TerracottaPrimary,
-                fontFamily = FontFamily.Serif
-            )
-
-            if (selectedRubrics.isEmpty()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .border(1.dp, tableBorderColor, RoundedCornerShape(10.dp))
-                        .padding(14.dp),
-                    color = Color.Transparent
-                ) {
-                    Text(
-                        text = "No rubrics selected yet. Search below or tap 'Browse Chapters' to add rubrics from Kent's Repertory.",
-                        fontSize = 12.sp,
-                        color = subtextColor
-                    )
-                }
-            } else {
-                FlowRow(
+            if (selectedTab == 0) {
+                // ==================== TAB 0: SELECT RUBRICS ====================
+                // Header Row with Repertory Stats and Browse Repertory button
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    selectedRubrics.forEach { rubric ->
-                        RubricRemovableChip(
-                            rubric = rubric,
-                            onRemove = { onRemoveRubric(rubric.id) },
-                            onClick = {
-                                coroutineScope.launch {
-                                    val rubEntity = repertoryRepository.getRubricById(rubric.id)
-                                    if (rubEntity != null) {
-                                        rubricForPreview = rubEntity
-                                    }
-                                }
-                            },
-                            isDark = isDark
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "HOMOEOPATHIC REPERTORY",
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            letterSpacing = 1.4.sp,
+                            color = if (isDark) TerracottaLight else TerracottaPrimary
+                        )
+                        Text(
+                            text = "$rubricCount rubrics · $remedyCount remedies in database",
+                            fontSize = 11.sp,
+                            color = subtextColor
                         )
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Search Bar for Full Repertory Database
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Search full repertory by keywords (e.g. 'fear dark', 'head bursting', 'thirst')...", fontSize = 12.5.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = subtextColor) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear search", tint = subtextColor)
-                        }
+                    Button(
+                        onClick = { showBrowseDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("btn_browse_repertory")
+                    ) {
+                        Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Browse Chapters", fontSize = 12.sp)
                     }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = TerracottaPrimary,
-                    unfocusedBorderColor = tableBorderColor,
-                    focusedTextColor = textColor,
-                    unfocusedTextColor = textColor
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("input_search_rubrics")
-            )
+                }
 
-            // Search Results Dropdown / List
-            if (searchResults.isNotEmpty()) {
+                // Totality Accordion (Part 9)
+                var isTotalityExpanded by remember { mutableStateOf(true) }
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, tableBorderColor, RoundedCornerShape(12.dp))
-                        .background(if (isDark) Color(0x33000000) else Color(0x18000000))
-                        .padding(8.dp),
-                    color = Color.Transparent
+                        .border(1.dp, if (isDark) Color(0x1FFFFFFF) else Color(0x14000000), RoundedCornerShape(12.dp)),
+                    color = if (isDark) Color(0x14FFFFFF) else Color(0x0A000000)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        searchResults.forEach { rub ->
-                            val isSelected = selectedRubrics.any { it.id == rub.id }
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) TerracottaPrimary.copy(alpha = 0.2f) else Color.Transparent)
-                                    .clickable { rubricForPreview = rub }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                color = Color.Transparent
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isTotalityExpanded = !isTotalityExpanded },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                Text(
+                                    text = "TOTALITY",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.2.sp,
+                                    color = if (isDark) TerracottaLight else TerracottaPrimary,
+                                    fontFamily = FontFamily.Serif
+                                )
+                                Surface(
+                                    color = if (isDark) Color(0x2B401E17) else Color(0x14B5502F),
+                                    shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = rub.chapter.uppercase(),
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDark) TerracottaLight else TerracottaPrimary
-                                        )
-                                        Text(
-                                            text = rub.rubricText,
-                                            fontSize = 12.5.sp,
-                                            color = textColor
-                                        )
-                                    }
+                                    Text(
+                                        text = "${selectedRubrics.size} rubrics",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) TerracottaLight else TerracottaPrimary,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                    )
+                                }
+                            }
 
-                                    IconButton(
-                                        onClick = {
-                                            if (isSelected) {
-                                                onRemoveRubric(rub.id)
-                                            } else {
-                                                val remMap = RepertoryRepository.parseRubricRemedies(rub.remediesJson)
-                                                onAddRubric(
-                                                    SelectedRubric(
-                                                        id = rub.id,
-                                                        chapter = rub.chapter,
-                                                        rubricText = rub.rubricText,
-                                                        remedies = remMap
-                                                    )
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier.size(32.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Immediate recalculation active",
+                                    fontSize = 9.5.sp,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    color = subtextColor
+                                )
+                                Icon(
+                                    imageVector = if (isTotalityExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = if (isTotalityExpanded) "Collapse" else "Expand",
+                                    tint = subtextColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        AnimatedVisibility(visible = isTotalityExpanded) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                                if (selectedRubrics.isEmpty()) {
+                                    Text(
+                                        text = "No rubrics selected yet. Search below or tap 'Browse Chapters' to add rubrics from Kent's Repertory.",
+                                        fontSize = 11.5.sp,
+                                        color = subtextColor,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                } else {
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Add,
-                                            contentDescription = null,
-                                            tint = if (isSelected) Color(0xFFE53935) else (if (isDark) TerracottaLight else TerracottaPrimary)
-                                        )
+                                        selectedRubrics.forEach { rubric ->
+                                            RubricRemovableChip(
+                                                rubric = rubric,
+                                                onRemove = { onRemoveRubric(rubric.id) },
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val rubEntity = repertoryRepository.getRubricById(rubric.id)
+                                                        if (rubEntity != null) {
+                                                            rubricForPreview = rubEntity
+                                                        }
+                                                    }
+                                                },
+                                                isDark = isDark
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            // Compute Tied Groups
-            val tiedGroups = remember(repertorizationResults) {
-                repertorizationResults.groupBy { it.score }.filter { it.value.size > 1 }
-            }
+                // Search Bar for Full Repertory Database
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search by keywords or symptoms (e.g. 'fear dark', 'ringworm', 'bursting')...", fontSize = 12.5.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = subtextColor) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear search", tint = subtextColor)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TerracottaPrimary,
+                        unfocusedBorderColor = tableBorderColor,
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("input_search_rubrics")
+                )
 
-            // Tie Detection Alert Banner
-            if (tiedGroups.isNotEmpty() && repertorizationResults.isNotEmpty()) {
-                val highestTiedScore = tiedGroups.keys.maxOrNull() ?: 0
-                val highestTiedGroup = tiedGroups[highestTiedScore] ?: emptyList()
-                if (highestTiedGroup.size >= 2) {
+                // Search Results Dropdown / List with Highlighting
+                if (isSearching) {
+                    Text("Searching entire repertory...", fontSize = 11.5.sp, color = subtextColor)
+                } else if (searchResults.isNotEmpty()) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, if (isDark) Color(0x66B5502F) else Color(0x44B5502F), RoundedCornerShape(12.dp)),
-                        color = if (isDark) Color(0x22B5502F) else Color(0x12B5502F)
+                            .border(1.dp, tableBorderColor, RoundedCornerShape(12.dp))
+                            .background(if (isDark) Color(0x33000000) else Color(0x18000000))
+                            .padding(8.dp),
+                        color = Color.Transparent
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            searchResults.forEach { rub ->
+                                val isSelected = selectedRubrics.any { it.id == rub.id }
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) TerracottaPrimary.copy(alpha = 0.2f) else Color.Transparent)
+                                        .clickable { rubricForPreview = rub }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    color = Color.Transparent
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CompareArrows,
-                                        contentDescription = null,
-                                        tint = if (isDark) TerracottaLight else TerracottaPrimary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(
-                                        text = "TIE DETECTED (${highestTiedGroup.size} REMEDIES AT $highestTiedScore PTS)",
-                                        fontFamily = FontFamily.Serif,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        letterSpacing = 0.8.sp,
-                                        color = if (isDark) TerracottaLight else TerracottaPrimary
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            HighlightedRubricText(
+                                                text = rub.chapter.uppercase(),
+                                                query = searchQuery,
+                                                baseColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                                                highlightColor = if (isDark) Color(0xFFFFCC80) else Color(0xFFBF360C),
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            HighlightedRubricText(
+                                                text = rub.rubricText,
+                                                query = searchQuery,
+                                                baseColor = textColor,
+                                                highlightColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                if (isSelected) {
+                                                    onRemoveRubric(rub.id)
+                                                } else {
+                                                    val remMap = RepertoryRepository.parseRubricRemedies(rub.remediesJson)
+                                                    onAddRubric(
+                                                        SelectedRubric(
+                                                            id = rub.id,
+                                                            chapter = rub.chapter,
+                                                            rubricText = rub.rubricText,
+                                                            remedies = remMap
+                                                        )
+                                                    )
+                                                }
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Add,
+                                                contentDescription = null,
+                                                tint = if (isSelected) Color(0xFFE53935) else (if (isDark) TerracottaLight else TerracottaPrimary)
+                                            )
+                                        }
+                                    }
                                 }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "${highestTiedGroup.joinToString(" & ") { it.abbreviation.uppercase() }} have equal scores. Compare coverage and grade hierarchy side-by-side.",
-                                    fontSize = 11.5.sp,
-                                    color = textColor
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    differentiationPair = Pair(highestTiedGroup[0], highestTiedGroup[1])
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Text("Differentiate", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
+                } else if (searchQuery.isNotBlank() && !isSearching) {
+                    Text("No rubrics found matching '$searchQuery'. Try a broader keyword or browse chapters.", fontSize = 11.5.sp, color = subtextColor)
                 }
-            }
 
-            // Repertorization Results Grid (Live recalculation)
-            Text(
-                text = "REPERTORIZATION CHART & REMEDY RANKING",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-                color = if (isDark) TerracottaLight else TerracottaPrimary,
-                fontFamily = FontFamily.Serif
-            )
-
-            if (repertorizationResults.isEmpty()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, tableBorderColor, RoundedCornerShape(12.dp))
-                        .padding(20.dp),
-                    color = Color.Transparent
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Add rubrics to compute similimum hierarchy.",
-                            fontSize = 12.sp,
-                            color = subtextColor
-                        )
+                // Quick Switch to Tab 1 (Results)
+                if (selectedRubrics.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = { selectedTab = 1 },
+                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_switch_to_results")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("View Repertorization Results (${repertorizationResults.size} Remedies)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
             } else {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, tableBorderColor, RoundedCornerShape(12.dp)),
-                    color = Color.Transparent
-                ) {
-                    Column {
-                        // Header Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(if (isDark) Color(0x33B5502F) else Color(0x20B5502F))
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                // ==================== TAB 1: RESULTS ====================
+                if (selectedRubrics.isEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, tableBorderColor, RoundedCornerShape(12.dp))
+                            .padding(24.dp),
+                        color = Color.Transparent
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = "RANK & REMEDY",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                modifier = Modifier.weight(1.8f)
+                            Icon(
+                                imageVector = Icons.Default.ListAlt,
+                                contentDescription = null,
+                                tint = if (isDark) TerracottaLight else TerracottaPrimary,
+                                modifier = Modifier.size(36.dp)
                             )
                             Text(
-                                text = "COVERAGE",
-                                fontSize = 11.sp,
+                                text = "NO RUBRICS SELECTED YET",
+                                fontFamily = FontFamily.Serif,
                                 fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                modifier = Modifier.width(76.dp)
+                                fontSize = 12.sp,
+                                letterSpacing = 1.sp,
+                                color = if (isDark) TerracottaLight else TerracottaPrimary
                             )
                             Text(
-                                text = "SCORE",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                modifier = Modifier.width(52.dp)
+                                text = "Select symptoms and rubrics in the 'Select Rubrics' tab to compute repertorization results and remedy hierarchy.",
+                                fontSize = 12.sp,
+                                color = subtextColor,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
-                        }
-
-                        // Top 15 Remedies with Reasoning & Differentiation
-                        repertorizationResults.take(15).forEachIndexed { index, rem ->
-                            val isTop3 = index < 3
-                            val isTied = tiedGroups.containsKey(rem.score)
-                            val isExpanded = expandedRemedies.contains(rem.abbreviation)
-                            val otherTiedRemedy = if (isTied) {
-                                tiedGroups[rem.score]?.firstOrNull { it.abbreviation != rem.abbreviation }
-                            } else {
-                                val targetIdx = if (index == 0 && repertorizationResults.size > 1) 1 else 0
-                                repertorizationResults.getOrNull(targetIdx)
+                            Button(
+                                onClick = { selectedTab = 0 },
+                                colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Text("Go to Select Rubrics", fontSize = 12.5.sp)
+                                }
                             }
+                        }
+                    }
+                } else {
+                    // Compute Tied Groups
+                    val tiedGroups = remember(repertorizationResults) {
+                        repertorizationResults.groupBy { it.score }.filter { it.value.size > 1 }
+                    }
 
-                            Column(
+                    // TIE GROUP Clean Summary Card (Matching Reference Design)
+                    if (tiedGroups.isNotEmpty() && repertorizationResults.isNotEmpty()) {
+                        val highestTiedScore = tiedGroups.keys.maxOrNull() ?: 0
+                        val highestTiedGroup = tiedGroups[highestTiedScore] ?: emptyList()
+                        if (highestTiedGroup.size >= 2) {
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(
-                                        if (isTop3) (if (isDark) Color(0x18B5502F) else Color(0x10B5502F))
-                                        else (if (index % 2 == 1) (if (isDark) Color(0x10FFFFFF) else Color(0x06000000)) else Color.Transparent)
-                                    )
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .border(
+                                        1.dp,
+                                        if (isDark) Color(0x1FFFFFFF) else Color(0x14000000),
+                                        RoundedCornerShape(16.dp)
+                                    ),
+                                color = if (isDark) Color(0x2A401E17) else Color(0x14B5502F),
+                                shape = RoundedCornerShape(16.dp)
                             ) {
-                                // Main Summary Row
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1.8f)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(if (isDark) TerracottaLight.copy(alpha = 0.2f) else TerracottaPrimary.copy(alpha = 0.15f))
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
                                         ) {
                                             Text(
-                                                text = "#${index + 1} ${rem.abbreviation.uppercase()}",
-                                                fontWeight = if (isTop3) FontWeight.Bold else FontWeight.SemiBold,
-                                                fontSize = 13.5.sp,
-                                                color = textColor
+                                                text = "TIE GROUP",
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 1.sp,
+                                                color = if (isDark) TerracottaLight else TerracottaPrimary
                                             )
-                                            if (isTop3) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(if (isDark) TerracottaLight else TerracottaPrimary)
-                                                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                                                ) {
-                                                    Text(
-                                                        text = "TOP ${index + 1}",
-                                                        fontSize = 8.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color.White
-                                                    )
-                                                }
-                                            }
-                                            if (isTied) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(if (isDark) Color(0x33B5502F) else Color(0x22B5502F))
-                                                        .border(1.dp, if (isDark) TerracottaLight else TerracottaPrimary, RoundedCornerShape(4.dp))
-                                                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                                                ) {
-                                                    Text(
-                                                        text = "TIED",
-                                                        fontSize = 8.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = if (isDark) TerracottaLight else TerracottaPrimary
-                                                    )
-                                                }
-                                            }
                                         }
+
                                         Text(
-                                            text = rem.fullName,
+                                            text = "Grade ${highestTiedGroup.firstOrNull()?.gradeBreakdown?.values?.maxOrNull() ?: 3}",
                                             fontSize = 11.sp,
-                                            color = subtextColor,
-                                            maxLines = 1
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) TerracottaLight else TerracottaPrimary
                                         )
                                     }
 
-                                    Text(
-                                        text = "${rem.coverage}/${selectedRubrics.size}",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = textColor,
-                                        modifier = Modifier.width(76.dp)
-                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
 
                                     Text(
-                                        text = "${rem.score}",
+                                        text = "${highestTiedGroup.size} remedies at $highestTiedScore pts",
                                         fontFamily = FontFamily.Serif,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        color = if (isTop3) (if (isDark) TerracottaLight else TerracottaPrimary) else textColor,
-                                        modifier = Modifier.width(52.dp)
+                                        fontSize = 16.sp,
+                                        color = textColor
                                     )
-                                }
 
-                                // Quick Action Row: Why this remedy? & Differentiate
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Expandable "Why this remedy?" toggle button
-                                    Surface(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .border(1.dp, if (isExpanded) TerracottaPrimary else tableBorderColor, RoundedCornerShape(6.dp))
-                                            .clickable {
-                                                expandedRemedies = if (isExpanded) {
-                                                    expandedRemedies - rem.abbreviation
-                                                } else {
-                                                    expandedRemedies + rem.abbreviation
-                                                }
-                                            }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                                        color = if (isExpanded) (if (isDark) Color(0x33B5502F) else Color(0x18B5502F)) else Color.Transparent
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        Text(
+                                            text = "— View all ${highestTiedGroup.size} remedies →",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (isDark) TerracottaLight else TerracottaPrimary,
+                                            modifier = Modifier
+                                                .clickable { viewingTiedGroupDialog = highestTiedGroup }
+                                                .padding(vertical = 4.dp)
+                                        )
+
+                                        Button(
+                                            onClick = {
+                                                differentiationPair = Pair(highestTiedGroup[0], highestTiedGroup[1])
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                         ) {
                                             Text(
-                                                text = "Why this remedy?",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = if (isExpanded) (if (isDark) TerracottaLight else TerracottaPrimary) else textColor
+                                                text = "Differentiate",
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                softWrap = false
                                             )
-                                            Icon(
-                                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                                contentDescription = null,
-                                                tint = if (isExpanded) (if (isDark) TerracottaLight else TerracottaPrimary) else subtextColor,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-                                    }
-
-                                    // Differentiate button
-                                    if (otherTiedRemedy != null) {
-                                        Surface(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .border(
-                                                    1.dp,
-                                                    if (isTied) (if (isDark) TerracottaLight else TerracottaPrimary) else tableBorderColor,
-                                                    RoundedCornerShape(6.dp)
-                                                )
-                                                .clickable {
-                                                    differentiationPair = Pair(rem, otherTiedRemedy)
-                                                }
-                                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                                            color = if (isTied) (if (isDark) Color(0x22B5502F) else Color(0x12B5502F)) else Color.Transparent
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.CompareArrows,
-                                                    contentDescription = null,
-                                                    tint = if (isTied) (if (isDark) TerracottaLight else TerracottaPrimary) else subtextColor,
-                                                    modifier = Modifier.size(13.dp)
-                                                )
-                                                Text(
-                                                    text = if (isTied) "Differentiate (vs ${otherTiedRemedy.abbreviation.uppercase()})" else "Differentiate",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = if (isTied) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (isTied) (if (isDark) TerracottaLight else TerracottaPrimary) else textColor
-                                                )
-                                            }
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
 
-                                // Expandable "Why this remedy?" section
-                                AnimatedVisibility(
-                                    visible = isExpanded,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
+                    // Section Title
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "REMEDY RANKINGS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                            color = if (isDark) TerracottaLight else TerracottaPrimary,
+                            fontFamily = FontFamily.Serif
+                        )
+                        Text(
+                            text = "${repertorizationResults.size} candidates",
+                            fontSize = 11.sp,
+                            color = subtextColor
+                        )
+                    }
+
+                    if (repertorizationResults.isEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, tableBorderColor, RoundedCornerShape(12.dp))
+                                .padding(20.dp),
+                            color = Color.Transparent
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Add rubrics to compute similimum hierarchy.",
+                                    fontSize = 12.sp,
+                                    color = subtextColor
+                                )
+                            }
+                        }
+                    } else {
+                        // Individual Remedy Cards (Matching Reference Image)
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            repertorizationResults.take(15).forEachIndexed { index, rem ->
+                                val isTop3 = index < 3
+                                val isTied = tiedGroups.containsKey(rem.score)
+                                val isExpanded = expandedRemedies.contains(rem.abbreviation)
+                                val otherTiedRemedy = if (isTied) {
+                                    tiedGroups[rem.score]?.firstOrNull { it.abbreviation != rem.abbreviation }
+                                } else {
+                                    val targetIdx = if (index == 0 && repertorizationResults.size > 1) 1 else 0
+                                    repertorizationResults.getOrNull(targetIdx)
+                                }
+                                val maxGrade = rem.gradeBreakdown.values.maxOrNull() ?: 1
+
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .border(
+                                            1.dp,
+                                            if (isTop3) (if (isDark) TerracottaLight.copy(alpha = 0.4f) else TerracottaPrimary.copy(alpha = 0.35f))
+                                            else tableBorderColor,
+                                            RoundedCornerShape(16.dp)
+                                        ),
+                                    color = if (isDark) Color(0x351F1B18) else Color(0x28FFFFFF),
+                                    shape = RoundedCornerShape(16.dp),
+                                    shadowElevation = if (isTop3) 3.dp else 1.dp
                                 ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(if (isDark) Color(0x24000000) else Color(0x0C000000))
-                                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        val matchedRubrics = selectedRubrics.filter { (rem.gradeBreakdown[it.id] ?: 0) > 0 }
-                                        val unmatchedRubrics = selectedRubrics.filter { (rem.gradeBreakdown[it.id] ?: 0) == 0 }
-
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        // Row 1: Rank, Remedy Abbreviation, Grade Badge
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = "REMEDY REASONING · MATCHED RUBRICS (${matchedRubrics.size})",
-                                                fontFamily = FontFamily.Serif,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp,
-                                                letterSpacing = 1.sp,
-                                                color = if (isDark) TerracottaLight else TerracottaPrimary
-                                            )
-                                            Text(
-                                                text = "${rem.score} pts total",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = subtextColor
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = "#${index + 1}",
+                                                    fontFamily = FontFamily.Serif,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 15.sp,
+                                                    color = if (isDark) TerracottaLight else TerracottaPrimary
+                                                )
+                                                Text(
+                                                    text = rem.abbreviation.uppercase(),
+                                                    fontFamily = FontFamily.Serif,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 18.sp,
+                                                    color = textColor
+                                                )
+                                            }
+
+                                            // Grade Pill
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(
+                                                        when (maxGrade) {
+                                                            3 -> if (isDark) Color(0x33B5502F) else Color(0x20B5502F)
+                                                            2 -> if (isDark) Color(0x334A6B56) else Color(0x204A6B56)
+                                                            else -> if (isDark) Color(0x22FFFFFF) else Color(0x10000000)
+                                                        }
+                                                    )
+                                                    .border(
+                                                        1.dp,
+                                                        when (maxGrade) {
+                                                            3 -> if (isDark) TerracottaLight else TerracottaPrimary
+                                                            2 -> if (isDark) SageGreenLight else SageGreenPrimary
+                                                            else -> tableBorderColor
+                                                        },
+                                                        RoundedCornerShape(6.dp)
+                                                    )
+                                                    .padding(horizontal = 8.dp, vertical = 2.5.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Grade $maxGrade",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = when (maxGrade) {
+                                                        3 -> if (isDark) TerracottaLight else TerracottaPrimary
+                                                        2 -> if (isDark) SageGreenLight else SageGreenPrimary
+                                                        else -> subtextColor
+                                                    }
+                                                )
+                                            }
                                         }
 
-                                        if (matchedRubrics.isEmpty()) {
-                                            Text(
-                                                text = "No rubrics in this case contain this remedy.",
-                                                fontSize = 11.sp,
-                                                color = subtextColor
-                                            )
-                                        } else {
-                                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                                matchedRubrics.forEach { rubric ->
-                                                    val grade = rem.gradeBreakdown[rubric.id] ?: 1
-                                                    val gradeBadgeColor = when (grade) {
-                                                        3 -> Color(0xFFD32F2F)
-                                                        2 -> if (isDark) TerracottaLight else TerracottaPrimary
-                                                        else -> if (isDark) Color(0xFFAAAAAA) else Color(0xFF666666)
-                                                    }
-                                                    val gradeLabel = when (grade) {
-                                                        3 -> "Grade 3 (3 pts) · Keynote"
-                                                        2 -> "Grade 2 (2 pts) · Moderate"
-                                                        else -> "Grade 1 (1 pt) · Plain"
-                                                    }
+                                        Spacer(modifier = Modifier.height(3.dp))
 
+                                        // Row 2: Full Latin Remedy Name
+                                        Text(
+                                            text = rem.fullName.ifBlank { rem.abbreviation.uppercase() },
+                                            fontSize = 13.sp,
+                                            color = subtextColor
+                                        )
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
+                                        // Row 3: Score & Coverage with proper hierarchy
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(
+                                                    text = "SCORE",
+                                                    fontSize = 9.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    letterSpacing = 0.8.sp,
+                                                    color = subtextColor
+                                                )
+                                                Text(
+                                                    text = "${rem.score}",
+                                                    fontFamily = FontFamily.Serif,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 21.sp,
+                                                    color = if (isTop3) (if (isDark) TerracottaLight else TerracottaPrimary) else textColor
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(36.dp))
+
+                                            Column {
+                                                Text(
+                                                    text = "COVERAGE",
+                                                    fontSize = 9.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    letterSpacing = 0.8.sp,
+                                                    color = subtextColor
+                                                )
+                                                Text(
+                                                    text = "${rem.coverage}/${selectedRubrics.size}",
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = textColor
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.weight(1f))
+
+                                            IconButton(
+                                                onClick = {
+                                                    viewingMateriaMedicaRemedy = rem.abbreviation
+                                                    viewingMateriaMedicaFullName = rem.fullName
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowForward,
+                                                    contentDescription = "View Materia Medica",
+                                                    tint = subtextColor,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
+                                        // Row 4: Action Buttons (FlowRow preventing narrow vertical wraps)
+                                        FlowRow(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            // Why this remedy? Toggle
+                                            Surface(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .border(1.dp, if (isExpanded) TerracottaPrimary else tableBorderColor, RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        expandedRemedies = if (isExpanded) {
+                                                            expandedRemedies - rem.abbreviation
+                                                        } else {
+                                                            expandedRemedies + rem.abbreviation
+                                                        }
+                                                    }
+                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                color = if (isExpanded) (if (isDark) Color(0x33B5502F) else Color(0x18B5502F)) else Color.Transparent
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Why this remedy?",
+                                                        fontSize = 11.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = if (isExpanded) (if (isDark) TerracottaLight else TerracottaPrimary) else textColor,
+                                                        maxLines = 1,
+                                                        softWrap = false
+                                                    )
+                                                    Icon(
+                                                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                        contentDescription = null,
+                                                        tint = if (isExpanded) (if (isDark) TerracottaLight else TerracottaPrimary) else subtextColor,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            // Materia Medica Action Button
+                                            Surface(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .border(1.dp, if (isDark) Color(0x66D4AF37) else Color(0x44B8860B), RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        viewingMateriaMedicaRemedy = rem.abbreviation
+                                                        viewingMateriaMedicaFullName = rem.fullName
+                                                    }
+                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                color = if (isDark) Color(0x22D4AF37) else Color(0x12D4AF37)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.AutoStories,
+                                                        contentDescription = null,
+                                                        tint = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B),
+                                                        modifier = Modifier.size(13.dp)
+                                                    )
+                                                    Text(
+                                                        text = "Materia Medica",
+                                                        fontSize = 11.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B),
+                                                        maxLines = 1,
+                                                        softWrap = false
+                                                    )
+                                                }
+                                            }
+
+                                            // Differentiate Button — Single-line guaranteed, never wraps vertically!
+                                            if (otherTiedRemedy != null) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(
+                                                            1.dp,
+                                                            if (isTied) (if (isDark) TerracottaLight else TerracottaPrimary) else tableBorderColor,
+                                                            RoundedCornerShape(8.dp)
+                                                        )
+                                                        .clickable {
+                                                            differentiationPair = Pair(rem, otherTiedRemedy)
+                                                        }
+                                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                    color = if (isTied) (if (isDark) Color(0x2A401E17) else Color(0x18B5502F)) else Color.Transparent
+                                                ) {
                                                     Row(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .clip(RoundedCornerShape(6.dp))
-                                                            .background(if (isDark) Color(0x14FFFFFF) else Color(0x08000000))
-                                                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                                        verticalAlignment = Alignment.CenterVertically
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                                                     ) {
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                            Text(
-                                                                text = "${rubric.chapter.uppercase()} › ${rubric.rubricText}",
-                                                                fontSize = 11.5.sp,
-                                                                fontWeight = if (grade == 3) FontWeight.Bold else FontWeight.Medium,
-                                                                color = textColor
-                                                            )
-                                                        }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .clip(RoundedCornerShape(4.dp))
-                                                                .background(gradeBadgeColor.copy(alpha = 0.16f))
-                                                                .border(1.dp, gradeBadgeColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                        ) {
-                                                            Text(
-                                                                text = gradeLabel,
-                                                                fontSize = 9.5.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = gradeBadgeColor
-                                                            )
-                                                        }
+                                                        Icon(
+                                                            imageVector = Icons.Default.CompareArrows,
+                                                            contentDescription = null,
+                                                            tint = if (isTied) (if (isDark) TerracottaLight else TerracottaPrimary) else subtextColor,
+                                                            modifier = Modifier.size(13.dp)
+                                                        )
+                                                        Text(
+                                                            text = "Differentiate",
+                                                            fontSize = 11.5.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = if (isTied) (if (isDark) TerracottaLight else TerracottaPrimary) else textColor,
+                                                            maxLines = 1,
+                                                            softWrap = false
+                                                        )
                                                     }
                                                 }
                                             }
                                         }
 
-                                        if (unmatchedRubrics.isNotEmpty()) {
-                                            Row(
+                                        // Expandable "Why this remedy?" section
+                                        AnimatedVisibility(
+                                            visible = isExpanded,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            Column(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .padding(top = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                                    .padding(top = 12.dp)
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(if (isDark) Color(0x22000000) else Color(0x0A000000))
+                                                    .padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Info,
-                                                    contentDescription = null,
-                                                    tint = subtextColor,
-                                                    modifier = Modifier.size(13.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    text = "Unmatched symptoms in case: ${unmatchedRubrics.joinToString("; ") { it.rubricText.take(30) }}",
-                                                    fontSize = 10.sp,
-                                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                                    color = subtextColor,
-                                                    maxLines = 2
-                                                )
+                                                val matchedRubrics = selectedRubrics.filter { (rem.gradeBreakdown[it.id] ?: 0) > 0 }
+                                                val unmatchedRubrics = selectedRubrics.filter { (rem.gradeBreakdown[it.id] ?: 0) == 0 }
+
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "MATCHED RUBRICS (${matchedRubrics.size})",
+                                                        fontFamily = FontFamily.Serif,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 10.sp,
+                                                        letterSpacing = 1.sp,
+                                                        color = if (isDark) TerracottaLight else TerracottaPrimary
+                                                    )
+                                                    Text(
+                                                        text = "${rem.score} pts total",
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = subtextColor
+                                                    )
+                                                }
+
+                                                if (matchedRubrics.isEmpty()) {
+                                                    Text(
+                                                        text = "No rubrics in this case contain this remedy.",
+                                                        fontSize = 11.sp,
+                                                        color = subtextColor
+                                                    )
+                                                } else {
+                                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                        matchedRubrics.forEach { rubric ->
+                                                            val grade = rem.gradeBreakdown[rubric.id] ?: 1
+                                                            val gradeBadgeColor = when (grade) {
+                                                                3 -> Color(0xFFD32F2F)
+                                                                2 -> if (isDark) TerracottaLight else TerracottaPrimary
+                                                                else -> if (isDark) Color(0xFFAAAAAA) else Color(0xFF666666)
+                                                            }
+                                                            val gradeLabel = when (grade) {
+                                                                3 -> "Grade 3 (3 pts) · Keynote"
+                                                                2 -> "Grade 2 (2 pts) · Moderate"
+                                                                else -> "Grade 1 (1 pt) · Plain"
+                                                            }
+
+                                                            Row(
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .clip(RoundedCornerShape(8.dp))
+                                                                    .background(if (isDark) Color(0x14FFFFFF) else Color(0x08000000))
+                                                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Column(modifier = Modifier.weight(1f)) {
+                                                                    Text(
+                                                                        text = "${rubric.chapter.uppercase()} › ${rubric.rubricText}",
+                                                                        fontSize = 11.5.sp,
+                                                                        fontWeight = if (grade == 3) FontWeight.Bold else FontWeight.Medium,
+                                                                        color = textColor
+                                                                    )
+                                                                }
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .clip(RoundedCornerShape(4.dp))
+                                                                        .background(gradeBadgeColor.copy(alpha = 0.16f))
+                                                                        .border(1.dp, gradeBadgeColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                ) {
+                                                                    Text(
+                                                                        text = gradeLabel,
+                                                                        fontSize = 9.5.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        color = gradeBadgeColor
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                if (unmatchedRubrics.isNotEmpty()) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(top = 4.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Info,
+                                                            contentDescription = null,
+                                                            tint = subtextColor,
+                                                            modifier = Modifier.size(13.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = "Unmatched: ${unmatchedRubrics.joinToString("; ") { it.rubricText.take(30) }}",
+                                                            fontSize = 10.sp,
+                                                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                                            color = subtextColor,
+                                                            maxLines = 2
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -929,6 +1293,7 @@ fun RepertorizationStep(
             onAddRubric = onAddRubric,
             onRemoveRubric = onRemoveRubric,
             repertoryRepository = repertoryRepository,
+            materiaMedicaRepository = materiaMedicaRepository,
             isDark = isDark
         )
     }
@@ -958,6 +1323,9 @@ fun RepertorizationStep(
             },
             onDismiss = { rubricForPreview = null },
             repertoryRepository = repertoryRepository,
+            onOpenMateriaMedica = { abbr ->
+                viewingMateriaMedicaRemedy = abbr
+            },
             isDark = isDark
         )
     }
@@ -970,8 +1338,234 @@ fun RepertorizationStep(
             allCandidates = repertorizationResults.take(15),
             selectedRubrics = selectedRubrics,
             onDismiss = { differentiationPair = null },
+            materiaMedicaRepository = materiaMedicaRepository,
+            caseEntity = caseEntity,
             isDark = isDark
         )
+    }
+
+    // Direct Materia Medica Viewer Dialog from active repertorization
+    if (viewingMateriaMedicaRemedy != null) {
+        val repo = materiaMedicaRepository ?: remember {
+            val appDb = com.example.data.AppDatabase.getDatabase(context)
+            MateriaMedicaRepository(appDb.materiaMedicaDao(), appDb.remedyDao())
+        }
+        MateriaMedicaViewerDialog(
+            remedyAbbreviation = viewingMateriaMedicaRemedy!!,
+            initialFullName = viewingMateriaMedicaFullName,
+            selectedRubrics = selectedRubrics,
+            caseEntity = caseEntity,
+            materiaMedicaRepository = repo,
+            onDismiss = {
+                viewingMateriaMedicaRemedy = null
+                viewingMateriaMedicaFullName = null
+            },
+            isDark = isDark
+        )
+    }
+
+    // Tied Group Remedies Dialog
+    viewingTiedGroupDialog?.let { tiedList ->
+        TiedGroupListDialog(
+            remedies = tiedList,
+            score = tiedList.firstOrNull()?.score ?: 0,
+            onDismiss = { viewingTiedGroupDialog = null },
+            onSelectRemedy = { rem ->
+                viewingTiedGroupDialog = null
+                val other = tiedList.firstOrNull { it.abbreviation != rem.abbreviation }
+                if (other != null) {
+                    differentiationPair = Pair(rem, other)
+                }
+            },
+            onOpenMateriaMedica = { abbr, full ->
+                viewingTiedGroupDialog = null
+                viewingMateriaMedicaRemedy = abbr
+                viewingMateriaMedicaFullName = full
+            },
+            isDark = isDark
+        )
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Tied Group Remedies Dialog
+// -------------------------------------------------------------------------------------------------
+@Composable
+fun TiedGroupListDialog(
+    remedies: List<RepertorizationScore>,
+    score: Int,
+    onDismiss: () -> Unit,
+    onSelectRemedy: (RepertorizationScore) -> Unit,
+    onOpenMateriaMedica: (String, String) -> Unit,
+    isDark: Boolean
+) {
+    var filterQuery by remember { mutableStateOf("") }
+    val textColor = if (isDark) CreamIvoryText else DarkBrownText
+    val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
+    val tableBorderColor = if (isDark) DarkGlassBorder else LightGlassBorder
+
+    val filtered = remember(filterQuery, remedies) {
+        if (filterQuery.isBlank()) remedies
+        else {
+            val q = filterQuery.trim().lowercase()
+            remedies.filter {
+                it.abbreviation.lowercase().contains(q) ||
+                it.fullName.lowercase().contains(q)
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.82f)
+                .clip(RoundedCornerShape(20.dp)),
+            color = if (isDark) Color(0xFF1E1B18) else Color(0xFFFAF7F2),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 6.dp
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Tied Remedies Group",
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = textColor
+                        )
+                        Text(
+                            text = "${remedies.size} remedies tied with score of $score pts",
+                            fontSize = 12.sp,
+                            color = if (isDark) TerracottaLight else TerracottaPrimary
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = textColor)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = filterQuery,
+                    onValueChange = { filterQuery = it },
+                    placeholder = { Text("Filter ${remedies.size} remedies...", fontSize = 13.sp) },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = subtextColor) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TerracottaPrimary,
+                        unfocusedBorderColor = tableBorderColor,
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filtered, key = { it.abbreviation }) { rem ->
+                        val maxGrade = rem.gradeBreakdown.values.maxOrNull() ?: 1
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isDark) Color(0x22FFFFFF) else Color(0x10000000),
+                            border = BorderStroke(1.dp, tableBorderColor)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = rem.abbreviation.uppercase(),
+                                            fontFamily = FontFamily.Serif,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = textColor
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(if (isDark) Color(0x2AFFFFFF) else Color(0x14000000))
+                                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = "Grade $maxGrade",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = subtextColor
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = rem.fullName.ifBlank { rem.abbreviation.uppercase() },
+                                        fontSize = 11.5.sp,
+                                        color = subtextColor,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable { onOpenMateriaMedica(rem.abbreviation, rem.fullName) }
+                                            .border(1.dp, if (isDark) Color(0x66D4AF37) else Color(0x44B8860B), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        color = if (isDark) Color(0x22D4AF37) else Color(0x12D4AF37)
+                                    ) {
+                                        Text(
+                                            text = "MM",
+                                            fontSize = 10.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B)
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = { onSelectRemedy(rem) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                                    ) {
+                                        Text(
+                                            text = "Diff",
+                                            fontSize = 10.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -986,10 +1580,15 @@ fun RemedyDifferentiationDialog(
     allCandidates: List<RepertorizationScore>,
     selectedRubrics: List<SelectedRubric>,
     onDismiss: () -> Unit,
+    materiaMedicaRepository: MateriaMedicaRepository? = null,
+    caseEntity: CaseEntity? = null,
     isDark: Boolean
 ) {
+    val context = LocalContext.current
     var rem1 by remember { mutableStateOf(initialRemedy1) }
     var rem2 by remember { mutableStateOf(initialRemedy2) }
+    var viewingMateriaMedicaRemedy by remember { mutableStateOf<String?>(null) }
+    var viewingMateriaMedicaFullName by remember { mutableStateOf<String?>(null) }
 
     val textColor = if (isDark) CreamIvoryText else DarkBrownText
     val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
@@ -1131,6 +1730,39 @@ fun RemedyDifferentiationDialog(
                                         color = subtextColor
                                     )
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .border(1.dp, if (isDark) Color(0x66D4AF37) else Color(0x44B8860B), RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            viewingMateriaMedicaRemedy = rem1.abbreviation
+                                            viewingMateriaMedicaFullName = rem1.fullName
+                                        }
+                                        .padding(vertical = 4.dp, horizontal = 6.dp),
+                                    color = if (isDark) Color(0x22D4AF37) else Color(0x12D4AF37)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.AutoStories,
+                                            contentDescription = null,
+                                            tint = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "View MM",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B)
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -1177,6 +1809,39 @@ fun RemedyDifferentiationDialog(
                                         fontSize = 11.5.sp,
                                         color = subtextColor
                                     )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .border(1.dp, if (isDark) Color(0x66D4AF37) else Color(0x44B8860B), RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            viewingMateriaMedicaRemedy = rem2.abbreviation
+                                            viewingMateriaMedicaFullName = rem2.fullName
+                                        }
+                                        .padding(vertical = 4.dp, horizontal = 6.dp),
+                                    color = if (isDark) Color(0x22D4AF37) else Color(0x12D4AF37)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.AutoStories,
+                                            contentDescription = null,
+                                            tint = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "View MM",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) Color(0xFFD4AF37) else Color(0xFFB8860B)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1500,6 +2165,25 @@ fun RemedyDifferentiationDialog(
                 }
             }
         }
+    }
+
+    if (viewingMateriaMedicaRemedy != null) {
+        val repo = materiaMedicaRepository ?: remember {
+            val appDb = com.example.data.AppDatabase.getDatabase(context)
+            MateriaMedicaRepository(appDb.materiaMedicaDao(), appDb.remedyDao())
+        }
+        MateriaMedicaViewerDialog(
+            remedyAbbreviation = viewingMateriaMedicaRemedy!!,
+            initialFullName = viewingMateriaMedicaFullName,
+            selectedRubrics = selectedRubrics,
+            caseEntity = caseEntity,
+            materiaMedicaRepository = repo,
+            onDismiss = {
+                viewingMateriaMedicaRemedy = null
+                viewingMateriaMedicaFullName = null
+            },
+            isDark = isDark
+        )
     }
 }
 

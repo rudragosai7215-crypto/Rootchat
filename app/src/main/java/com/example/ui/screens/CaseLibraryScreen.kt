@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -390,19 +391,22 @@ private fun LibraryCaseCard(
         }
     }
 
+    val isAcute = caseEntity.caseType.equals("ACUTE", ignoreCase = true)
+    val patientInitial = caseEntity.patientName.trim().take(1).uppercase().ifEmpty { "P" }
+
     GlassPanel(
         modifier = Modifier.fillMaxWidth(),
         isDark = isDark,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         onClick = onOpen
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Top Row: Badges and Menu
+            // Top Row: Avatar + Patient Name + Badges + Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -410,181 +414,247 @@ private fun LibraryCaseCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    CaseTypeBadge(caseType = caseEntity.caseType, isDark = isDark)
-                    if (caseEntity.isCompleted) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(if (isDark) Color(0x335B7E68) else Color(0x225B7E68))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                    // Patient Initials Avatar Circle
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isAcute) {
+                                    if (isDark) TerracottaLight.copy(alpha = 0.25f) else TerracottaPrimary.copy(alpha = 0.15f)
+                                } else {
+                                    if (isDark) Color(0x335B7E68) else Color(0x225B7E68)
+                                }
+                            )
+                            .border(
+                                1.dp,
+                                if (isAcute) (if (isDark) TerracottaLight else TerracottaPrimary)
+                                else (if (isDark) Color(0xFF88B097) else Color(0xFF4A6B56)),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = patientInitial,
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = if (isAcute) (if (isDark) TerracottaLight else TerracottaPrimary)
+                            else (if (isDark) Color(0xFF88B097) else Color(0xFF385542))
+                        )
+                    }
+
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "COMPLETE",
-                                fontSize = 8.5.sp,
+                                text = caseEntity.patientName.ifBlank { "Unnamed Patient" },
+                                fontFamily = FontFamily.Serif,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isDark) TerracottaLight else TerracottaPrimary
+                                fontSize = 16.sp,
+                                color = textColor
+                            )
+                            val demographic = buildString {
+                                if (caseEntity.patientAge.isNotBlank()) append("${caseEntity.patientAge}y")
+                                if (caseEntity.patientGender.isNotBlank()) {
+                                    if (isNotEmpty()) append(" • ")
+                                    append(caseEntity.patientGender)
+                                }
+                            }
+                            if (demographic.isNotBlank()) {
+                                Text(
+                                    text = "($demographic)",
+                                    fontSize = 11.5.sp,
+                                    color = subtextColor
+                                )
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            CaseTypeBadge(caseType = caseEntity.caseType, isDark = isDark)
+                            if (caseEntity.isCompleted) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(if (isDark) Color(0x335B7E68) else Color(0x225B7E68))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "COMPLETE",
+                                        fontSize = 8.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFF88B097) else Color(0xFF385542)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Action icons (Direct PDF + More Menu)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onExportPdf,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PictureAsPdf,
+                            contentDescription = "Export PDF",
+                            tint = accentColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                tint = subtextColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                            modifier = Modifier.background(if (isDark) DarkGlassSurface else LightGlassSurface)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Open / Edit Case") },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onOpen()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Export as PDF") },
+                                leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onExportPdf()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Duplicate Case") },
+                                leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDuplicate()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete Case", color = Color(0xFFE53935)) },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE53935)) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDelete()
+                                }
                             )
                         }
                     }
                 }
+            }
 
-                // Options Menu (PDF, Duplicate, Delete)
-                Box {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier.size(32.dp)
+            // Middle Clinical Summary Box
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isDark) Color(0x25000000) else Color(0x18000000))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Final Diagnosis
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            tint = subtextColor
+                        Text(
+                            text = "DIAGNOSIS:",
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                            color = subtextColor,
+                            fontFamily = FontFamily.Serif
+                        )
+                        Text(
+                            text = finalDiagnosisText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = textColor,
+                            maxLines = 1
                         )
                     }
 
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                        modifier = Modifier.background(if (isDark) DarkGlassSurface else LightGlassSurface)
+                    // Prescribed Remedy
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Open / Edit Case") },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onOpen()
-                            }
+                        Text(
+                            text = "SIMILIMUM:",
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                            color = accentColor,
+                            fontFamily = FontFamily.Serif
                         )
-                        DropdownMenuItem(
-                            text = { Text("Export as PDF") },
-                            leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onExportPdf()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Duplicate Case") },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onDuplicate()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete Case", color = Color(0xFFE53935)) },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFE53935)) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            }
+                        Text(
+                            text = remedyText,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor
                         )
                     }
                 }
             }
 
-            // 1. Patient Name (clearly labeled)
-            Column(modifier = Modifier.fillMaxWidth()) {
+            // Bottom strip: Date + Open action
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = "PATIENT NAME",
-                    fontSize = 9.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = accentColor,
-                    fontFamily = FontFamily.Serif
+                    text = "Updated $dateStr",
+                    fontSize = 10.5.sp,
+                    color = subtextColor
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = caseEntity.patientName.ifBlank { "Unnamed Patient" },
+                        text = "Open Case",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = textColor
+                        fontSize = 12.sp,
+                        color = accentColor
                     )
-                    val demographic = buildString {
-                        if (caseEntity.patientAge.isNotBlank()) append("${caseEntity.patientAge}y")
-                        if (caseEntity.patientGender.isNotBlank()) {
-                            if (isNotEmpty()) append(" • ")
-                            append(caseEntity.patientGender)
-                        }
-                    }
-                    if (demographic.isNotBlank()) {
-                        Text(
-                            text = "($demographic)",
-                            fontSize = 12.sp,
-                            color = subtextColor
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(13.dp)
+                    )
                 }
-            }
-
-            // 2. Date (clearly labeled)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "DATE:",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    color = subtextColor,
-                    fontFamily = FontFamily.Serif
-                )
-                Text(
-                    text = dateStr,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor
-                )
-            }
-
-            // 3. Final Diagnosis (clearly labeled)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "FINAL DIAGNOSIS:",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    color = subtextColor,
-                    fontFamily = FontFamily.Serif
-                )
-                Text(
-                    text = finalDiagnosisText,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = textColor,
-                    maxLines = 2
-                )
-            }
-
-            // 4. Remedy (clearly labeled)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "REMEDY:",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    color = accentColor,
-                    fontFamily = FontFamily.Serif
-                )
-                Text(
-                    text = remedyText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = accentColor
-                )
             }
         }
     }

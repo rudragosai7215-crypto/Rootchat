@@ -20,14 +20,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +42,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +85,7 @@ fun ProfileScreen(
     onUpdateProfile: (String, String) -> Unit,
     onImportRepertory: () -> Unit,
     importProgress: ImportProgress,
+    onLogout: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -89,6 +94,7 @@ fun ProfileScreen(
     var isEditingName by remember { mutableStateOf(false) }
     var editedName by remember(currentClinicianName) { mutableStateOf(currentClinicianName) }
     var editedRole by remember(currentRole) { mutableStateOf(currentRole) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val textColor = if (isDark) CreamIvoryText else DarkBrownText
     val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
@@ -213,6 +219,89 @@ fun ProfileScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Clinician Identity & Data Isolation Session Card
+        item {
+            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = null,
+                                tint = if (isDark) TerracottaLight else TerracottaPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "CLINICIAN SESSION & CONTINUITY",
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp,
+                                letterSpacing = 1.2.sp,
+                                color = if (isDark) TerracottaLight else TerracottaPrimary
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isDark) Color(0x335B7E68) else Color(0x225B7E68))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "ISOLATED BY NAME",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) SageGreenLight else SageGreenPrimary
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "All case records in the library are securely associated with clinician name \"$currentClinicianName\". Logging out returns to the Clinician Sign-In screen:\n• Signing in with \"$currentClinicianName\" instantly restores all your cases.\n• Signing in with a different name initializes a clean workspace.",
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        color = subtextColor
+                    )
+
+                    Button(
+                        onClick = { showLogoutDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isDark) Color(0x33B5502F) else Color(0x22B5502F),
+                            contentColor = if (isDark) TerracottaLight else TerracottaPrimary
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isDark) TerracottaLight.copy(alpha = 0.5f) else TerracottaPrimary.copy(alpha = 0.5f)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("btn_logout_clinician")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Log Out / Switch Clinician",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -444,5 +533,56 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(
+                    text = "Log Out Clinician?",
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "You are currently signed in as $currentClinicianName ($currentRole).",
+                        fontSize = 13.5.sp,
+                        color = textColor
+                    )
+                    Text(
+                        text = "Data Continuity Details:\n• Logging back in as \"$currentClinicianName\" will immediately restore all your saved case records.\n• Logging in with a different clinician name will initialize a fresh workspace.",
+                        fontSize = 12.5.sp,
+                        lineHeight = 17.sp,
+                        color = subtextColor
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = TerracottaPrimary),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.testTag("btn_confirm_logout")
+                ) {
+                    Text("Log Out", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLogoutDialog = false }
+                ) {
+                    Text("Cancel", color = subtextColor)
+                }
+            },
+            containerColor = if (isDark) Color(0xFF231B15) else Color(0xFFF9F6F0),
+            shape = RoundedCornerShape(18.dp)
+        )
     }
 }

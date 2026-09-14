@@ -114,7 +114,7 @@ fun CaseTypeBadge(
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
         Text(
-            text = if (isAcute) "ACUTE (12)" else "CHRONIC (17)",
+            text = if (isAcute) "ACUTE" else "CHRONIC",
             color = textColor,
             style = MaterialTheme.typography.labelSmall
         )

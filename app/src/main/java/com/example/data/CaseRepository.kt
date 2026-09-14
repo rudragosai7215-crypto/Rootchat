@@ -9,6 +9,7 @@ class CaseRepository(
     private val caseDao: CaseDao
 ) {
     val allCases: Flow<List<CaseEntity>> = caseDao.getAllCases()
+    val allClinicians: Flow<List<String>> = caseDao.getAllClinicians()
     val totalCount: Flow<Int> = caseDao.getTotalCaseCount()
     val acuteCount: Flow<Int> = caseDao.getAcuteCaseCount()
     val chronicCount: Flow<Int> = caseDao.getChronicCaseCount()
@@ -17,6 +18,11 @@ class CaseRepository(
     fun getTotalCountForClinician(clinician: String): Flow<Int> = caseDao.getTotalCaseCountForClinician(clinician)
     fun getAcuteCountForClinician(clinician: String): Flow<Int> = caseDao.getAcuteCaseCountForClinician(clinician)
     fun getChronicCountForClinician(clinician: String): Flow<Int> = caseDao.getChronicCaseCountForClinician(clinician)
+
+    fun getCasesForWorkspace(workspaceId: String): Flow<List<CaseEntity>> = caseDao.getCasesForWorkspace(workspaceId)
+    fun getTotalCountForWorkspace(workspaceId: String): Flow<Int> = caseDao.getTotalCaseCountForWorkspace(workspaceId)
+    fun getAcuteCountForWorkspace(workspaceId: String): Flow<Int> = caseDao.getAcuteCaseCountForWorkspace(workspaceId)
+    fun getChronicCountForWorkspace(workspaceId: String): Flow<Int> = caseDao.getChronicCaseCountForWorkspace(workspaceId)
 
     fun getCaseById(id: String): Flow<CaseEntity?> = caseDao.getCaseById(id)
 

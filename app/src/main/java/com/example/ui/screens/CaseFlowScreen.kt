@@ -1,6 +1,9 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,12 +13,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,16 +30,19 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -50,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.example.data.CaseEntity
 import com.example.data.ClinicalFormData
 import com.example.data.RepertorizationScore
@@ -86,7 +97,9 @@ import com.example.ui.theme.CreamIvoryMuted
 import com.example.ui.theme.CreamIvoryText
 import com.example.ui.theme.DarkBrownMuted
 import com.example.ui.theme.DarkBrownText
+import com.example.ui.theme.DarkGlassBorder
 import com.example.ui.theme.GlassBackgroundScaffold
+import com.example.ui.theme.LightGlassBorder
 import com.example.ui.theme.SageGreenLight
 import com.example.ui.theme.SageGreenPrimary
 import com.example.ui.theme.TerracottaLight
@@ -113,9 +126,15 @@ fun CaseFlowScreen(
     val isAcute = initialCase.caseType.equals("ACUTE", ignoreCase = true)
     val totalSteps = if (isAcute) 20 else 26
 
-    var currentStep by remember { mutableIntStateOf(initialCase.currentStep.coerceIn(0, totalSteps - 1)) }
-    var caseData by remember { mutableStateOf(initialCase) }
+    var currentStep by remember(initialCase.id) { mutableIntStateOf(initialCase.currentStep.coerceIn(0, totalSteps - 1)) }
+    var caseData by remember(initialCase.id) { mutableStateOf(initialCase) }
     var formData by remember(initialCase.id) { mutableStateOf(ClinicalFormData.fromCaseEntity(initialCase)) }
+    var showStepListDialog by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(currentStep) {
+        scrollState.scrollTo(0)
+    }
 
     // Selected Rubrics State (strictly unique by rubric id)
     var selectedRubrics by remember(initialCase.id) {
@@ -219,6 +238,27 @@ fun CaseFlowScreen(
         caseData = newForm.toCaseEntity(caseData)
     }
 
+    // Debounced Autosave engine
+    var saveStatusText by remember { mutableStateOf("Saved") }
+    var isAutosaving by remember { mutableStateOf(false) }
+    var initialAutosaveSkipped by remember { mutableStateOf(false) }
+
+    LaunchedEffect(formData, selectedRubrics, currentStep) {
+        if (!initialAutosaveSkipped) {
+            initialAutosaveSkipped = true
+            return@LaunchedEffect
+        }
+        saveStatusText = "Editing..."
+        delay(1200) // 1.2-second debounce
+        isAutosaving = true
+        saveStatusText = "Autosaving..."
+        val updated = updateCaseWithRubrics()
+        onSaveCase(updated)
+        delay(300)
+        isAutosaving = false
+        saveStatusText = "Autosaved"
+    }
+
     GlassBackgroundScaffold(isDark = isDark) {
         Column(
             modifier = modifier
@@ -229,7 +269,7 @@ fun CaseFlowScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
                 color = Color.Transparent
             ) {
                 Row(
@@ -245,44 +285,84 @@ fun CaseFlowScreen(
                         modifier = Modifier.testTag("btn_close_case_flow")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Save and Close",
                             tint = textColor
                         )
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showStepListDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
                         Text(
-                            text = if (isAcute) "ACUTE PROTOCOL" else "CHRONIC PROTOCOL",
-                            fontSize = 10.5.sp,
+                            text = if (isAcute) "Acute Protocol" else "Chronic Protocol",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.6.sp,
-                            color = accentColor,
+                            color = textColor,
                             fontFamily = FontFamily.Serif
                         )
-                        Text(
-                            text = "Step ${currentStep + 1} of $totalSteps",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = subtextColor
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Step ${currentStep + 1} of $totalSteps",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = subtextColor
+                            )
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = subtextColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
 
-                    IconButton(
-                        onClick = {
-                            if (isSaving) return@IconButton
-                            val updated = updateCaseWithRubrics()
-                            onSaveCase(updated)
-                            Toast.makeText(context, "Case draft saved", Toast.LENGTH_SHORT).show()
-                        },
-                        enabled = !isSaving,
-                        modifier = Modifier.testTag("btn_save_case_draft")
+                    // Autosave Status Pill (Sage Green capsule matching reference)
+                    Surface(
+                        color = if (isDark) Color(0xFF1E3326) else Color(0xFFE8EFEA),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.clickable {
+                            if (!isSaving) {
+                                val updated = updateCaseWithRubrics()
+                                onSaveCase(updated)
+                                saveStatusText = "Saved"
+                                Toast.makeText(context, "Case draft saved", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "Quick Save Draft",
-                            tint = accentColor
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            if (isAutosaving || isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = if (isDark) SageGreenLight else SageGreenPrimary
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = if (isDark) SageGreenLight else SageGreenPrimary,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                            Text(
+                                text = if (isSaving) "Saving..." else if (isAutosaving) "Saving" else "Autosaved",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isDark) SageGreenLight else SageGreenPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -301,7 +381,7 @@ fun CaseFlowScreen(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 // Step Title & Indicator
@@ -441,6 +521,87 @@ fun CaseFlowScreen(
                         }
                     }
                 }
+            }
+
+            if (showStepListDialog) {
+                AlertDialog(
+                    onDismissRequest = { showStepListDialog = false },
+                    title = {
+                        Text(
+                            text = "Jump to Protocol Step",
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = textColor
+                        )
+                    },
+                    text = {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 420.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            itemsIndexed(stepTitles) { idx, title ->
+                                val isCurrent = idx == currentStep
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            if (!isSaving) {
+                                                val updated = updateCaseWithRubrics().copy(currentStep = idx)
+                                                caseData = updated
+                                                currentStep = idx
+                                                onSaveCase(updated)
+                                            }
+                                            showStepListDialog = false
+                                        }
+                                        .background(if (isCurrent) accentColor.copy(alpha = 0.25f) else Color.Transparent)
+                                        .border(
+                                            width = if (isCurrent) 1.5.dp else 0.5.dp,
+                                            color = if (isCurrent) accentColor else if (isDark) DarkGlassBorder else LightGlassBorder,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    color = Color.Transparent
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "${idx + 1}.",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = if (isCurrent) accentColor else subtextColor
+                                        )
+                                        Text(
+                                            text = title,
+                                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 13.sp,
+                                            color = if (isCurrent) accentColor else textColor,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (isCurrent) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Current Step",
+                                                tint = accentColor,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showStepListDialog = false }) {
+                            Text("Close", color = accentColor)
+                        }
+                    }
+                )
             }
 
             if (saveError != null) {

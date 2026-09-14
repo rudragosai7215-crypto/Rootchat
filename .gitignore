@@ -16,3 +16,8 @@
 local.properties
 .env
 debug.keystore
+.build-outputs/
+debug.keystore.base64
+oorep.sql.gz
+!RootChart.apk
+!RootChart-SourceCode.zip

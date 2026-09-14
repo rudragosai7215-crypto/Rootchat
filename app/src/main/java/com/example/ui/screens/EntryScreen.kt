@@ -59,6 +59,7 @@ import com.example.ui.theme.GlassPanel
 import com.example.ui.theme.LightGlassBorder
 import com.example.ui.theme.LightGlassSurface
 import com.example.ui.theme.SageGreenContainer
+import com.example.ui.theme.SageGreenLight
 import com.example.ui.theme.SageGreenPrimary
 import com.example.ui.theme.TerracottaContainer
 import com.example.ui.theme.TerracottaLight
@@ -68,6 +69,7 @@ import com.example.ui.theme.TerracottaPrimary
 fun EntryScreen(
     isDark: Boolean,
     onProfileCreated: (name: String, role: String) -> Unit,
+    knownClinicians: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var clinicianName by remember { mutableStateOf("") }
@@ -155,8 +157,46 @@ fun EntryScreen(
                         text = "Set up your local offline profile to sign clinical case records.",
                         fontSize = 12.5.sp,
                         color = subtextColor,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
+                        modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
                     )
+
+                    if (knownClinicians.isNotEmpty()) {
+                        Text(
+                            text = "RETURNING PRACTITIONER (RESUME CASES)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.1.sp,
+                            color = if (isDark) SageGreenLight else SageGreenPrimary,
+                            fontFamily = FontFamily.Serif
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            knownClinicians.take(3).forEach { existingName ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (clinicianName == existingName) TerracottaPrimary else if (isDark) Color(0x33FFFFFF) else Color(0x15000000))
+                                        .clickable {
+                                            clinicianName = existingName
+                                            errorText = null
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = existingName,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (clinicianName == existingName) Color.White else textColor
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     // Clinician Name Input
                     Text(
@@ -188,6 +228,14 @@ fun EntryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("input_clinician_name")
+                    )
+
+                    Text(
+                        text = "Name-based continuity: entering an existing clinician name restores all associated cases; entering a new name starts a fresh workspace.",
+                        fontSize = 10.5.sp,
+                        color = subtextColor,
+                        lineHeight = 14.sp,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))

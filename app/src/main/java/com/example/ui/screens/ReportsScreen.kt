@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +44,7 @@ import com.example.ui.theme.SageGreenPrimary
 import com.example.ui.theme.TerracottaLight
 import com.example.ui.theme.TerracottaPrimary
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReportsScreen(
     caseList: List<CaseEntity>,
@@ -215,17 +218,17 @@ fun ReportsScreen(
                     if (topPotencies.isEmpty()) {
                         Text("Potency distribution will populate as prescriptions are written.", fontSize = 12.5.sp, color = subtextColor)
                     } else {
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             topPotencies.forEach { (potency, count) ->
                                 Box(
                                     modifier = Modifier
-                                        .weight(1f)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(if (isDark) Color(0x22FFFFFF) else Color(0x15000000))
-                                        .padding(10.dp),
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
