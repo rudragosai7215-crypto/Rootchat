@@ -1,5 +1,7 @@
 package com.example.ui.screens.caseflow
 
+import com.example.data.RepertoryRepository
+
 /**
  * Classical Repertory chapter organization model adhering to Dr. J.T. Kent's
  * classical 33-chapter hierarchy with nested anatomical sub-sections and
@@ -108,12 +110,7 @@ object ClassicalRepertoryCatalog {
             id = "stomach",
             orderNumber = 14,
             title = "Stomach",
-            rawChapters = listOf("STOMACH", "APPETITE"),
-            subSections = listOf(
-                BrowseSubSection("All Stomach & Appetite", listOf("STOMACH", "APPETITE")),
-                BrowseSubSection("Stomach (Main)", listOf("STOMACH")),
-                BrowseSubSection("Appetite", listOf("APPETITE"))
-            )
+            rawChapters = listOf("STOMACH")
         ),
         BrowseChapterItem(
             id = "abdomen",
@@ -187,12 +184,7 @@ object ClassicalRepertoryCatalog {
             id = "chest",
             orderNumber = 25,
             title = "Chest",
-            rawChapters = listOf("CHEST", "HEART & CIRCULATION"),
-            subSections = listOf(
-                BrowseSubSection("All Chest", listOf("CHEST", "HEART & CIRCULATION")),
-                BrowseSubSection("Chest (Main)", listOf("CHEST")),
-                BrowseSubSection("Heart & Circulation", listOf("HEART & CIRCULATION"))
-            )
+            rawChapters = listOf("CHEST")
         ),
         BrowseChapterItem(
             id = "back",
@@ -246,6 +238,13 @@ object ClassicalRepertoryCatalog {
 
     val ADDITIONAL_SPECS: List<BrowseChapterItem> = listOf(
         BrowseChapterItem(
+            id = "appetite",
+            orderNumber = null,
+            title = "Appetite",
+            rawChapters = listOf("APPETITE"),
+            isClassical = false
+        ),
+        BrowseChapterItem(
             id = "blood",
             orderNumber = null,
             title = "Blood",
@@ -258,34 +257,59 @@ object ClassicalRepertoryCatalog {
             title = "Clinical",
             rawChapters = listOf("CLINICAL", "GENERAL"),
             isClassical = false
+        ),
+        BrowseChapterItem(
+            id = "heart_and_chest",
+            orderNumber = null,
+            title = "Heart & Chest",
+            rawChapters = listOf("HEART & CIRCULATION", "HEART & CHEST"),
+            isClassical = false
         )
     )
 
-    fun buildSections(allDbChapters: List<String>): Pair<List<BrowseChapterItem>, List<BrowseChapterItem>> {
+    fun buildSections(
+        allDbChapters: List<String>,
+        repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
+    ): Pair<List<BrowseChapterItem>, List<BrowseChapterItem>> {
+        val isOriginalKent = repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT
         val dbUpperSet = allDbChapters.map { it.uppercase().trim() }.toSet()
 
         // Section 1: Classical 33 chapters
         val classicalItems = CLASSICAL_SPECS.map { spec ->
-            val availableRaw = spec.rawChapters.filter { dbUpperSet.contains(it.uppercase()) }
+            val availableRaw = spec.rawChapters.filter { ch ->
+                val upper = ch.uppercase().trim()
+                dbUpperSet.contains(upper) && (!isOriginalKent || RepertoryRepository.ORIGINAL_KENT_CHAPTERS.contains(upper))
+            }
             val availableSubSections = if (spec.subSections.isNotEmpty()) {
                 spec.subSections.mapNotNull { sub ->
-                    val subRaw = sub.rawChapters.filter { dbUpperSet.contains(it.uppercase()) }
+                    val subRaw = sub.rawChapters.filter { ch ->
+                        val upper = ch.uppercase().trim()
+                        dbUpperSet.contains(upper) && (!isOriginalKent || RepertoryRepository.ORIGINAL_KENT_CHAPTERS.contains(upper))
+                    }
                     if (subRaw.isNotEmpty()) sub.copy(rawChapters = subRaw) else null
                 }
             } else emptyList()
 
             spec.copy(
                 rawChapters = if (availableRaw.isNotEmpty()) availableRaw else spec.rawChapters,
-                subSections = if (availableSubSections.isNotEmpty()) availableSubSections else spec.subSections
+                subSections = availableSubSections
             )
         }
 
-        // Raw chapters in Section 1
-        val classicalRawSet = CLASSICAL_SPECS.flatMap { it.rawChapters }.map { it.uppercase() }.toSet()
+        // If Original Kent is selected, return ONLY the authentic classical chapters (no additional modern sections)
+        if (isOriginalKent) {
+            return Pair(classicalItems, emptyList())
+        }
 
-        // Section 2: Blood, Clinical and any remaining chapters in DB
+        // Section 2: 4 Additional Chapters (Appetite, Blood, Clinical, Heart & Chest)
+        val classicalRawSet = CLASSICAL_SPECS.flatMap { it.rawChapters }.map { it.uppercase().trim() }.toSet()
+        val additionalRawSet = ADDITIONAL_SPECS.flatMap { it.rawChapters }.map { it.uppercase().trim() }.toSet()
+
         val otherDbItems = allDbChapters
-            .filter { !classicalRawSet.contains(it.uppercase().trim()) && it.uppercase().trim() != "BLOOD" && it.uppercase().trim() != "CLINICAL" }
+            .filter {
+                val upper = it.uppercase().trim()
+                !classicalRawSet.contains(upper) && !additionalRawSet.contains(upper)
+            }
             .sorted()
             .map { raw ->
                 val formattedName = raw.lowercase().split(" ")
@@ -299,9 +323,13 @@ object ClassicalRepertoryCatalog {
                 )
             }
 
-        val additionalItems = ADDITIONAL_SPECS.map { spec ->
-            val availableRaw = spec.rawChapters.filter { dbUpperSet.contains(it.uppercase()) }
-            spec.copy(rawChapters = if (availableRaw.isNotEmpty()) availableRaw else spec.rawChapters)
+        val additionalItems = ADDITIONAL_SPECS.mapNotNull { spec ->
+            val availableRaw = spec.rawChapters.filter { dbUpperSet.contains(it.uppercase().trim()) }
+            if (availableRaw.isNotEmpty()) {
+                spec.copy(rawChapters = availableRaw)
+            } else {
+                null
+            }
         } + otherDbItems
 
         return Pair(classicalItems, additionalItems)

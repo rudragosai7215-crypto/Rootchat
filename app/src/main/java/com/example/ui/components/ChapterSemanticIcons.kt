@@ -115,7 +115,7 @@ fun ChapterSemanticIcon(
                 drawThroat(tint, strokeWidth, w, h)
             }
             // 14. STOMACH -> Stomach organ contour
-            norm == "STOMACH" || norm.contains("STOMACH") || norm.contains("APPETITE") -> {
+            norm == "STOMACH" || (norm.contains("STOMACH") && !norm.contains("APPETITE")) -> {
                 drawStomach(tint, strokeWidth, w, h)
             }
             // 15. ABDOMEN -> Intestines / abdominal organ coils
@@ -194,13 +194,21 @@ fun ChapterSemanticIcon(
             norm == "GENERALITIES" || norm.contains("GENERAL") -> {
                 drawHumanFigure(tint, strokeWidth, w, h)
             }
-            // ADDITIONAL 1: BLOOD -> Blood drop
-            norm == "BLOOD" || norm.contains("BLOOD") || norm.contains("CIRCULATION") -> {
+            // ADDITIONAL 1: APPETITE -> Digestive appetite / stomach
+            norm == "APPETITE" || norm.contains("APPETITE") -> {
+                drawStomach(tint, strokeWidth, w, h)
+            }
+            // ADDITIONAL 2: BLOOD -> Blood drop
+            norm == "BLOOD" || norm.contains("BLOOD") || (norm.contains("CIRCULATION") && !norm.contains("HEART")) -> {
                 drawBloodDrop(tint, strokeWidth, w, h)
             }
-            // ADDITIONAL 2: CLINICAL -> Clipboard with clinical cross
+            // ADDITIONAL 3: CLINICAL -> Clipboard with clinical cross
             norm == "CLINICAL" || norm.contains("CLINIC") -> {
                 drawClinicalClipboard(tint, strokeWidth, w, h)
+            }
+            // ADDITIONAL 4: HEART & CHEST / HEART & CIRCULATION -> Cardiovascular / Thorax
+            norm.contains("HEART") -> {
+                drawRibcage(tint, strokeWidth, w, h)
             }
             // Fallback: Elegant book symbol
             else -> {

@@ -12,7 +12,38 @@ class RepertoryRepository(
     val rubricCount: Flow<Int> = rubricDao.getRubricCount()
     val remedyCount: Flow<Int> = remedyDao.getRemedyCount()
 
-    suspend fun searchRubrics(query: String): List<RubricEntity> {
+    suspend fun getChapters(repertoryType: String = REPERTORY_ORIGINAL_KENT): List<String> = withContext(Dispatchers.IO) {
+        val all = rubricDao.getAllChapters()
+        if (repertoryType == REPERTORY_ORIGINAL_KENT) {
+            all.filter { ORIGINAL_KENT_CHAPTERS.contains(it.uppercase().trim()) }
+        } else {
+            all
+        }
+    }
+
+    suspend fun getRubricCountForType(repertoryType: String = REPERTORY_ORIGINAL_KENT): Int = withContext(Dispatchers.IO) {
+        if (repertoryType == REPERTORY_ORIGINAL_KENT) {
+            rubricDao.getRubricCountInChapters(ORIGINAL_KENT_CHAPTERS)
+        } else {
+            rubricDao.getRubricCountSync()
+        }
+    }
+
+    suspend fun searchRubrics(query: String, repertoryType: String = REPERTORY_ORIGINAL_KENT): List<RubricEntity> {
+        val q = query.trim()
+        if (q.isBlank()) return emptyList()
+
+        return withContext(Dispatchers.IO) {
+            val rawResults = searchRubricsRaw(q)
+            if (repertoryType == REPERTORY_ORIGINAL_KENT) {
+                rawResults.filter { ORIGINAL_KENT_CHAPTERS.contains(it.chapter.uppercase().trim()) }
+            } else {
+                rawResults
+            }
+        }
+    }
+
+    private suspend fun searchRubricsRaw(query: String): List<RubricEntity> {
         val q = query.trim()
         if (q.isBlank()) return emptyList()
 
@@ -506,6 +537,22 @@ class RepertoryRepository(
     }
 
     companion object {
+        const val REPERTORY_ORIGINAL_KENT = "ORIGINAL_KENT"
+        const val REPERTORY_EXTENDED_KENT = "EXTENDED_KENT"
+
+        const val ORIGINAL_KENT_RUBRIC_COUNT = 72807
+        const val EXTENDED_KENT_RUBRIC_COUNT = 74667
+
+        val ORIGINAL_KENT_CHAPTERS: List<String> = listOf(
+            "MIND", "VERTIGO", "HEAD", "EYE", "VISION", "EAR", "HEARING", "NOSE",
+            "FACE", "MOUTH", "TEETH", "THROAT", "EXTERNAL THROAT", "STOMACH",
+            "ABDOMEN", "RECTUM", "STOOL", "BLADDER", "KIDNEYS", "PROSTATE GLAND",
+            "URETHRA", "URINE", "GENITALIA MALE", "GENITALIA FEMALE",
+            "LARYNX AND TRACHEA", "RESPIRATION", "COUGH", "EXPECTORATION",
+            "CHEST", "BACK", "EXTREMITIES", "SLEEP", "CHILL", "FEVER",
+            "PERSPIRATION", "SKIN", "GENERALITIES"
+        )
+
         fun parseSelectedRubrics(jsonString: String): List<SelectedRubric> {
             if (jsonString.isBlank() || jsonString == "[]") return emptyList()
             return try {

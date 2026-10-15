@@ -3,6 +3,7 @@ package com.example
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.*
+import com.example.ui.screens.caseflow.ClassicalRepertoryCatalog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -761,4 +762,174 @@ class RootChartComprehensiveQATest {
         assertTrue(pdf!!.exists())
         assertTrue(pdf.length() > 0)
     }
+
+    // ==========================================
+    // PHASE 6 — SELECTION OF REPERTORY & STEP NUMBERING
+    // ==========================================
+    @Test
+    fun testRepertorySelection_StepNumberingAcuteAndChronic() {
+        // Acute step list definition: 21 steps, with Selection of Repertory before Homeopathic Repertorization
+        val acuteStepTitles = listOf(
+            "Case Identification",
+            "Chief Complaints (LSMC with O.D.P.)",
+            "Associated Complaints",
+            "Personal History",
+            "Vital Examination",
+            "Menstrual History (if applicable)",
+            "Patient's Obstetric History (if applicable)",
+            "General Physical Examination",
+            "Systemic Examination",
+            "Clinical Investigations",
+            "Provisional Diagnosis",
+            "Clinician's Observation",
+            "Acute Mental State & Personality",
+            "Analysis of Symptoms",
+            "Evaluation of Symptoms",
+            "Totality of Symptoms",
+            "Selection of Repertory",
+            "Homeopathic Repertorization",
+            "Selection of Acute Similimum",
+            "Management (Advices)",
+            "Follow-up & Prognosis"
+        )
+        assertEquals("Acute protocol must have exactly 21 steps", 21, acuteStepTitles.size)
+        assertEquals("Step 17 must be Selection of Repertory", "Selection of Repertory", acuteStepTitles[16])
+        assertEquals("Step 18 must be Homeopathic Repertorization", "Homeopathic Repertorization", acuteStepTitles[17])
+
+        // Chronic step list definition: 27 steps, with Selection of Repertory before Homeopathic Repertorization
+        val chronicStepTitles = listOf(
+            "Case Identification",
+            "Chief Complaints",
+            "O.D.P. (Onset, Duration, Progress)",
+            "History of Presenting Complaint (Chronic)",
+            "Associated Complaints",
+            "Past Medical & Surgical History",
+            "Family History",
+            "Personal History",
+            "Vital Examination",
+            "Menstrual History (if applicable)",
+            "Patient's Obstetric History (if applicable)",
+            "General Physical Examination",
+            "Systemic Examination",
+            "Clinical Investigations",
+            "Provisional Diagnosis",
+            "Final Diagnosis",
+            "Clinician's Observation",
+            "Mental & Life Span Narrative",
+            "Miasmatic Evaluation",
+            "Analysis of Symptoms",
+            "Evaluation of Symptoms",
+            "Totality of Symptoms",
+            "Selection of Repertory",
+            "Homeopathic Repertorization",
+            "Selection of Constitutional Similimum",
+            "Management (Advices)",
+            "Follow-up & Prognosis"
+        )
+        assertEquals("Chronic protocol must have exactly 27 steps", 27, chronicStepTitles.size)
+        assertEquals("Step 23 must be Selection of Repertory", "Selection of Repertory", chronicStepTitles[22])
+        assertEquals("Step 24 must be Homeopathic Repertorization", "Homeopathic Repertorization", chronicStepTitles[23])
+    }
+
+    @Test
+    fun testRepertorySelection_OriginalVsExtendedChaptersAndRubrics() = runBlocking {
+        // Original Kent Repertory specifications
+        val originalChapters = repertoryRepo.getChapters(RepertoryRepository.REPERTORY_ORIGINAL_KENT)
+        assertEquals("Original Kent Repertory must contain 37 authentic classical chapters", 37, originalChapters.size)
+        assertFalse("Original Kent must NOT contain APPETITE as a separate chapter", originalChapters.contains("APPETITE"))
+        assertFalse("Original Kent must NOT contain BLOOD as a separate chapter", originalChapters.contains("BLOOD"))
+        assertFalse("Original Kent must NOT contain CLINICAL as a separate chapter", originalChapters.contains("CLINICAL"))
+        assertFalse("Original Kent must NOT contain HEART & CIRCULATION as a separate chapter", originalChapters.contains("HEART & CIRCULATION"))
+
+        val originalRubricCount = repertoryRepo.getRubricCountForType(RepertoryRepository.REPERTORY_ORIGINAL_KENT)
+        assertEquals("Original Kent rubrics count must be 72,807", 72807, originalRubricCount)
+
+        // Extended Kent Repertory specifications
+        val extendedChapters = repertoryRepo.getChapters(RepertoryRepository.REPERTORY_EXTENDED_KENT)
+        assertEquals("Extended Kent Repertory must contain all 41 chapters", 41, extendedChapters.size)
+        assertTrue("Extended Kent must contain APPETITE", extendedChapters.contains("APPETITE"))
+        assertTrue("Extended Kent must contain BLOOD", extendedChapters.contains("BLOOD"))
+        assertTrue("Extended Kent must contain CLINICAL", extendedChapters.contains("CLINICAL"))
+        assertTrue("Extended Kent must contain HEART & CIRCULATION", extendedChapters.contains("HEART & CIRCULATION"))
+
+        val extendedRubricCount = repertoryRepo.getRubricCountForType(RepertoryRepository.REPERTORY_EXTENDED_KENT)
+        assertEquals("Extended Kent rubrics count must be 74,667", 74667, extendedRubricCount)
+
+        // Rubric search respects repertoryType filtering
+        val origSearchResults = repertoryRepo.searchRubrics("headache", RepertoryRepository.REPERTORY_ORIGINAL_KENT)
+        assertTrue(origSearchResults.isNotEmpty())
+        assertTrue("All results in Original Kent must belong to the 37 original chapters",
+            origSearchResults.all { RepertoryRepository.ORIGINAL_KENT_CHAPTERS.contains(it.chapter.uppercase().trim()) }
+        )
+
+        // Verify Classical Catalog Stomach and Chest separation
+        val stomachSpec = ClassicalRepertoryCatalog.CLASSICAL_SPECS.first { it.id == "stomach" }
+        assertEquals(listOf("STOMACH"), stomachSpec.rawChapters)
+        assertFalse("Stomach must NOT mix with Appetite", stomachSpec.rawChapters.contains("APPETITE"))
+
+        val chestSpec = ClassicalRepertoryCatalog.CLASSICAL_SPECS.first { it.id == "chest" }
+        assertEquals(listOf("CHEST"), chestSpec.rawChapters)
+        assertFalse("Chest must NOT mix with Heart", chestSpec.rawChapters.contains("HEART & CIRCULATION"))
+
+        // Verify exactly 4 Additional Chapters in Catalog
+        assertEquals(4, ClassicalRepertoryCatalog.ADDITIONAL_SPECS.size)
+        val additionalTitles = ClassicalRepertoryCatalog.ADDITIONAL_SPECS.map { it.title }
+        assertTrue("Must contain Appetite in additional", additionalTitles.contains("Appetite"))
+        assertTrue("Must contain Blood in additional", additionalTitles.contains("Blood"))
+        assertTrue("Must contain Clinical in additional", additionalTitles.contains("Clinical"))
+        assertTrue("Must contain Heart & Chest in additional", additionalTitles.contains("Heart & Chest"))
+
+        // Verify buildSections for Extended Kent produces exactly 4 additional chapters
+        val (_, additionalExtended) = ClassicalRepertoryCatalog.buildSections(
+            extendedChapters,
+            RepertoryRepository.REPERTORY_EXTENDED_KENT
+        )
+        assertEquals("Extended Kent must have exactly 4 additional chapters", 4, additionalExtended.size)
+        val extAddTitles = additionalExtended.map { it.title }
+        assertEquals(listOf("Appetite", "Blood", "Clinical", "Heart & Chest"), extAddTitles)
+
+        // Verify buildSections for Original Kent produces 0 additional chapters
+        val (_, additionalOriginal) = ClassicalRepertoryCatalog.buildSections(
+            originalChapters,
+            RepertoryRepository.REPERTORY_ORIGINAL_KENT
+        )
+        assertEquals("Original Kent must have 0 additional chapters", 0, additionalOriginal.size)
+    }
+
+    @Test
+    fun testRepertoryType_SerializationAndPersistence() = runBlocking {
+        val originalCase = CaseEntity(
+            id = "CASE_REP_001",
+            caseType = "CHRONIC",
+            patientName = "Repertory Test Patient",
+            currentStep = 22
+        )
+
+        // Set to Extended Kent
+        val formDataExtended = ClinicalFormData.fromCaseEntity(originalCase).copy(
+            repertoryType = RepertoryRepository.REPERTORY_EXTENDED_KENT
+        )
+        val savedEntityExtended = formDataExtended.toCaseEntity(originalCase)
+        caseRepo.saveCase(savedEntityExtended)
+
+        val reloadedExtended = caseRepo.getCaseByIdSync("CASE_REP_001")
+        assertNotNull(reloadedExtended)
+        val reloadedFormExtended = ClinicalFormData.fromCaseEntity(reloadedExtended!!)
+        assertEquals("Repertory type must persist as EXTENDED_KENT",
+            RepertoryRepository.REPERTORY_EXTENDED_KENT, reloadedFormExtended.repertoryType)
+
+        // Switch to Original Kent
+        val formDataOriginal = reloadedFormExtended.copy(
+            repertoryType = RepertoryRepository.REPERTORY_ORIGINAL_KENT
+        )
+        val savedEntityOriginal = formDataOriginal.toCaseEntity(reloadedExtended)
+        caseRepo.saveCase(savedEntityOriginal)
+
+        val reloadedOriginal = caseRepo.getCaseByIdSync("CASE_REP_001")
+        assertNotNull(reloadedOriginal)
+        val reloadedFormOriginal = ClinicalFormData.fromCaseEntity(reloadedOriginal!!)
+        assertEquals("Repertory type must persist as ORIGINAL_KENT",
+            RepertoryRepository.REPERTORY_ORIGINAL_KENT, reloadedFormOriginal.repertoryType)
+    }
 }
+

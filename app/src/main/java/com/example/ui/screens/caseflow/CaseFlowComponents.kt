@@ -746,7 +746,8 @@ fun RepertoryBrowseDialog(
     onRemoveRubric: (Long) -> Unit,
     repertoryRepository: RepertoryRepository,
     materiaMedicaRepository: MateriaMedicaRepository? = null,
-    isDark: Boolean
+    isDark: Boolean,
+    repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
 ) {
     var allDbChapters by remember { mutableStateOf<List<String>>(emptyList()) }
     var classicalChapters by remember { mutableStateOf<List<BrowseChapterItem>>(emptyList()) }
@@ -776,13 +777,13 @@ fun RepertoryBrowseDialog(
     val textColor = if (isDark) CreamIvoryText else DarkBrownText
     val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
 
-    LaunchedEffect(Unit) {
-        val dbChs = repertoryRepository.getAllChapters()
+    LaunchedEffect(repertoryType) {
+        val dbChs = repertoryRepository.getChapters(repertoryType)
         allDbChapters = dbChs
-        val (classical, additional) = ClassicalRepertoryCatalog.buildSections(dbChs)
+        val (classical, additional) = ClassicalRepertoryCatalog.buildSections(dbChs, repertoryType)
         classicalChapters = classical
         additionalChapters = additional
-        if (classical.isNotEmpty() && selectedItem == null) {
+        if (classical.isNotEmpty()) {
             val first = classical.first()
             selectedItem = first
             selectedSubSection = first.subSections.firstOrNull()
@@ -886,7 +887,11 @@ fun RepertoryBrowseDialog(
                                         color = textColor
                                     )
                                     Text(
-                                        text = "Kent's Repertory · Classical",
+                                        text = if (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT) {
+                                            "Kent's Repertory (1897 Original) · 37 Chapters"
+                                        } else {
+                                            "Kent's Repertory (Extended) · 41 Chapters"
+                                        },
                                         fontFamily = FontFamily.Serif,
                                         fontStyle = FontStyle.Italic,
                                         fontSize = 11.5.sp,

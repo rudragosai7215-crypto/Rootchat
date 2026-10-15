@@ -32,7 +32,75 @@ object RepertoryJsonImporter {
     ) {
         withContext(Dispatchers.IO) {
             try {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
+                val tempFile = File(context.cacheDir, "upload_${System.currentTimeMillis()}.tmp")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (!tempFile.exists() || tempFile.length() == 0L) {
+                    onProgress(ImportProgress(isImporting = false, currentStatus = "File is empty or could not be read", processedCount = 0, totalCount = 0))
+                    return@withContext
+                }
+
+                val isZip = isZipFile(tempFile)
+                if (isZip) {
+                    onProgress(ImportProgress(isImporting = true, currentStatus = "Extracting ZIP archive...", processedCount = 0, totalCount = 74000))
+                    val zip = java.util.zip.ZipFile(tempFile)
+                    var foundEntry = false
+                    val entries = zip.entries()
+                    while (entries.hasMoreElements()) {
+                        val entry = entries.nextElement()
+                        val lowerName = entry.name.lowercase()
+                        if (lowerName.endsWith(".csv") || lowerName.endsWith(".tsv") || lowerName.endsWith(".txt")) {
+                            foundEntry = true
+                            onProgress(ImportProgress(isImporting = true, currentStatus = "Importing ${entry.name}...", processedCount = 0, totalCount = 74000))
+                            val count = zip.getInputStream(entry).use { stream ->
+                                processKentCsvStream(stream, rubricDao) { current ->
+                                    onProgress(ImportProgress(isImporting = true, currentStatus = "Importing ${entry.name}...", processedCount = current, totalCount = 74000))
+                                }
+                            }
+                            onProgress(ImportProgress(isImporting = false, currentStatus = "Successfully imported $count rubrics from ${entry.name}", processedCount = count, totalCount = count))
+                            break
+                        } else if (lowerName.endsWith(".json")) {
+                            foundEntry = true
+                            onProgress(ImportProgress(isImporting = true, currentStatus = "Importing ${entry.name}...", processedCount = 0, totalCount = 74000))
+                            val count = zip.getInputStream(entry).use { stream ->
+                                if (isKent) {
+                                    processKentInputStream(stream, rubricDao) { current ->
+                                        onProgress(ImportProgress(isImporting = true, currentStatus = "Importing rubrics...", processedCount = current, totalCount = 74000))
+                                    }
+                                } else {
+                                    processRemedyNamesInputStream(stream, remedyDao)
+                                }
+                            }
+                            onProgress(ImportProgress(isImporting = false, currentStatus = "Successfully imported $count records from ${entry.name}", processedCount = count, totalCount = count))
+                            break
+                        }
+                    }
+                    zip.close()
+                    tempFile.delete()
+                    if (!foundEntry) {
+                        onProgress(ImportProgress(isImporting = false, currentStatus = "No .csv or .json files found in ZIP archive", processedCount = 0, totalCount = 0))
+                    }
+                    return@withContext
+                }
+
+                val isCsv = isCsvFile(tempFile)
+                if (isCsv && isKent) {
+                    onProgress(ImportProgress(isImporting = true, currentStatus = "Importing Kent CSV...", processedCount = 0, totalCount = 74000))
+                    val count = tempFile.inputStream().use { stream ->
+                        processKentCsvStream(stream, rubricDao) { current ->
+                            onProgress(ImportProgress(isImporting = true, currentStatus = "Importing CSV rubrics...", processedCount = current, totalCount = 74000))
+                        }
+                    }
+                    tempFile.delete()
+                    onProgress(ImportProgress(isImporting = false, currentStatus = "Successfully imported $count rubrics from CSV", processedCount = count, totalCount = count))
+                    return@withContext
+                }
+
+                tempFile.inputStream().use { stream ->
                     if (isKent) {
                         onProgress(ImportProgress(isImporting = true, currentStatus = "Importing Kent Repertory...", processedCount = 0, totalCount = 74000))
                         val count = processKentInputStream(stream, rubricDao) { current ->
@@ -45,11 +113,146 @@ object RepertoryJsonImporter {
                         onProgress(ImportProgress(isImporting = false, currentStatus = "Successfully imported $count remedies", processedCount = count, totalCount = count))
                     }
                 }
+                tempFile.delete()
             } catch (e: Exception) {
                 Log.e(TAG, "Import failed", e)
                 onProgress(ImportProgress(isImporting = false, currentStatus = "Import error: ${e.message}", processedCount = 0, totalCount = 0))
             }
         }
+    }
+
+    private fun isZipFile(file: File): Boolean {
+        if (!file.exists() || file.length() < 4) return false
+        return try {
+            file.inputStream().use {
+                val b1 = it.read()
+                val b2 = it.read()
+                val b3 = it.read()
+                val b4 = it.read()
+                b1 == 0x50 && b2 == 0x4B && (b3 == 0x03 || b3 == 0x05 || b3 == 0x07)
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isCsvFile(file: File): Boolean {
+        if (!file.exists() || file.length() == 0L) return false
+        return try {
+            file.bufferedReader(Charsets.UTF_8).use { reader ->
+                val first = reader.readLine()?.trim() ?: ""
+                !first.startsWith("{") && !first.startsWith("[")
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun processKentCsvStream(
+        inputStream: InputStream,
+        rubricDao: RubricDao,
+        onProgress: ((Int) -> Unit)? = null
+    ): Int {
+        var totalCount = 0
+        val rubricBatch = ArrayList<RubricEntity>(BATCH_SIZE)
+        val reader = java.io.BufferedReader(java.io.InputStreamReader(inputStream, "UTF-8"))
+
+        var line = reader.readLine()
+        var hasHeader = false
+        if (line != null) {
+            val lower = line.lowercase()
+            if (lower.contains("chapter") || lower.contains("rubric") || lower.contains("remed")) {
+                hasHeader = true
+            }
+        }
+
+        fun parseRemediesToMap(rawRemedies: String): String {
+            val trimmed = rawRemedies.trim()
+            if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+                return trimmed
+            }
+            val remediesObj = org.json.JSONObject()
+            val tokens = trimmed.split(",", ";", " ")
+            for (t in tokens) {
+                val tok = t.trim()
+                if (tok.isEmpty()) continue
+                val parts = tok.split(":", "=", "-")
+                if (parts.size >= 2) {
+                    val rem = parts[0].trim().lowercase()
+                    val grade = parts[1].trim().toIntOrNull() ?: 1
+                    if (rem.isNotEmpty()) remediesObj.put(rem, grade)
+                } else if (tok.isNotEmpty()) {
+                    remediesObj.put(tok.lowercase(), 1)
+                }
+            }
+            return remediesObj.toString()
+        }
+
+        if (!hasHeader && line != null) {
+            val parts = parseCsvLine(line)
+            if (parts.size >= 2) {
+                val chapter = parts[0].trim().uppercase()
+                val text = parts[1].trim()
+                val remedies = if (parts.size >= 3) parseRemediesToMap(parts[2]) else "{}"
+                if (chapter.isNotEmpty() && text.isNotEmpty()) {
+                    totalCount++
+                    rubricBatch.add(RubricEntity(id = totalCount.toLong(), chapter = chapter, rubricText = text, source = "Kent", remediesJson = remedies))
+                }
+            }
+        }
+
+        while (true) {
+            line = reader.readLine() ?: break
+            if (line.isBlank()) continue
+            val parts = parseCsvLine(line)
+            if (parts.size >= 2) {
+                val chapter = parts[0].trim().uppercase()
+                val text = parts[1].trim()
+                val remedies = if (parts.size >= 3) parseRemediesToMap(parts[2]) else "{}"
+                if (chapter.isNotEmpty() && text.isNotEmpty()) {
+                    totalCount++
+                    rubricBatch.add(RubricEntity(id = totalCount.toLong(), chapter = chapter, rubricText = text, source = "Kent", remediesJson = remedies))
+                    if (rubricBatch.size >= BATCH_SIZE) {
+                        rubricDao.insertAll(rubricBatch)
+                        onProgress?.invoke(totalCount)
+                        rubricBatch.clear()
+                    }
+                }
+            }
+        }
+
+        if (rubricBatch.isNotEmpty()) {
+            rubricDao.insertAll(rubricBatch)
+            rubricBatch.clear()
+        }
+        return totalCount
+    }
+
+    private fun parseCsvLine(line: String): List<String> {
+        val tokens = mutableListOf<String>()
+        val sb = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        val delimiter = if (line.contains("\t")) '\t' else if (line.contains(";") && !line.contains(",")) ';' else ','
+        while (i < line.length) {
+            val c = line[i]
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
+                    sb.append('"')
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            } else if (c == delimiter && !inQuotes) {
+                tokens.add(sb.toString().trim())
+                sb.clear()
+            } else {
+                sb.append(c)
+            }
+            i++
+        }
+        tokens.add(sb.toString().trim())
+        return tokens
     }
 
     suspend fun importRepertoryDatasets(

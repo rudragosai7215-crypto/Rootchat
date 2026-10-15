@@ -335,7 +335,8 @@ fun RepertorizationStep(
     remedyCount: Int,
     isDark: Boolean,
     materiaMedicaRepository: MateriaMedicaRepository? = null,
-    caseEntity: CaseEntity? = null
+    caseEntity: CaseEntity? = null,
+    repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -358,8 +359,14 @@ fun RepertorizationStep(
     val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
     val tableBorderColor = if (isDark) DarkGlassBorder else LightGlassBorder
 
+    val effectiveRubricCount = if (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT) {
+        RepertoryRepository.ORIGINAL_KENT_RUBRIC_COUNT
+    } else {
+        rubricCount.coerceAtLeast(RepertoryRepository.EXTENDED_KENT_RUBRIC_COUNT)
+    }
+
     // Perform live search when query changes
-    LaunchedEffect(searchQuery) {
+    LaunchedEffect(searchQuery, repertoryType) {
         val q = searchQuery.trim()
         if (q.isBlank()) {
             searchResults = emptyList()
@@ -367,7 +374,7 @@ fun RepertorizationStep(
         } else {
             isSearching = true
             delay(250)
-            searchResults = repertoryRepository.searchRubrics(q)
+            searchResults = repertoryRepository.searchRubrics(q, repertoryType = repertoryType)
             isSearching = false
         }
     }
@@ -439,7 +446,11 @@ fun RepertorizationStep(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "HOMOEOPATHIC REPERTORY",
+                            text = if (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT) {
+                                "HOMOEOPATHIC REPERTORY · ORIGINAL KENT (1897)"
+                            } else {
+                                "HOMOEOPATHIC REPERTORY · EXTENDED KENT"
+                            },
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.5.sp,
@@ -447,7 +458,11 @@ fun RepertorizationStep(
                             color = if (isDark) TerracottaLight else TerracottaPrimary
                         )
                         Text(
-                            text = "$rubricCount rubrics · $remedyCount remedies in database",
+                            text = if (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT) {
+                                "$effectiveRubricCount rubrics · 37 classical chapters · $remedyCount remedies in database"
+                            } else {
+                                "$effectiveRubricCount rubrics · 41 chapters · $remedyCount remedies in database"
+                            },
                             fontSize = 11.sp,
                             color = subtextColor
                         )
@@ -1294,7 +1309,8 @@ fun RepertorizationStep(
             onRemoveRubric = onRemoveRubric,
             repertoryRepository = repertoryRepository,
             materiaMedicaRepository = materiaMedicaRepository,
-            isDark = isDark
+            isDark = isDark,
+            repertoryType = repertoryType
         )
     }
 

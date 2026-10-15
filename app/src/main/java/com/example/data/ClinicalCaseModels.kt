@@ -168,8 +168,9 @@ data class ClinicalFormData(
     val symptomAnalysisList: List<SymptomAnalysisItem> = emptyList(),
     val symptomEvaluationList: List<SymptomEvaluationItem> = emptyList(),
 
-    // Totality of Symptoms
+    // Totality of Symptoms & Repertory Selection
     val totalityNotes: String = "",
+    val repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT,
 
     // Prescription
     val prescribedRemedy: String = "",
@@ -318,6 +319,7 @@ data class ClinicalFormData(
             put("analysis", analysisArray)
             put("evaluation", evaluationArray)
             put("notes", totalityNotes)
+            put("repertoryType", repertoryType)
         }
 
         val followUpJson = JSONObject().apply {
@@ -677,6 +679,7 @@ data class ClinicalFormData(
             val analysisList = mutableListOf<SymptomAnalysisItem>()
             val evaluationList = mutableListOf<SymptomEvaluationItem>()
             var totalityNotes = ""
+            var repertoryType = RepertoryRepository.REPERTORY_ORIGINAL_KENT
 
             if (caseEntity.totalitySymptomNotes.startsWith("{")) {
                 try {
@@ -709,6 +712,7 @@ data class ClinicalFormData(
                         }
                     }
                     totalityNotes = obj.optString("notes", "")
+                    repertoryType = obj.optString("repertoryType", RepertoryRepository.REPERTORY_ORIGINAL_KENT)
                 } catch (_: Exception) {}
             } else {
                 totalityNotes = caseEntity.totalitySymptomNotes
@@ -817,6 +821,7 @@ data class ClinicalFormData(
                 symptomAnalysisList = analysisList,
                 symptomEvaluationList = evaluationList,
                 totalityNotes = totalityNotes,
+                repertoryType = repertoryType,
                 prescribedRemedy = caseEntity.prescribedRemedy,
                 prescribedRemedyFullName = caseEntity.prescribedRemedyFullName,
                 potency = caseEntity.potency,

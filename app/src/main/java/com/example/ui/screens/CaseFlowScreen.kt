@@ -90,6 +90,7 @@ import com.example.ui.screens.caseflow.PersonalHistoryStep
 import com.example.ui.screens.caseflow.PrescriptionStep
 import com.example.ui.screens.caseflow.ProvisionalDiagnosisStep
 import com.example.ui.screens.caseflow.RepertorizationStep
+import com.example.ui.screens.caseflow.RepertorySelectionStep
 import com.example.ui.screens.caseflow.SystemicExamStep
 import com.example.ui.screens.caseflow.TotalityOfSymptomsStep
 import com.example.ui.screens.caseflow.VitalExaminationStep
@@ -124,7 +125,7 @@ fun CaseFlowScreen(
 ) {
     val context = LocalContext.current
     val isAcute = initialCase.caseType.equals("ACUTE", ignoreCase = true)
-    val totalSteps = if (isAcute) 20 else 26
+    val totalSteps = if (isAcute) 21 else 27
 
     var currentStep by remember(initialCase.id) { mutableIntStateOf(initialCase.currentStep.coerceIn(0, totalSteps - 1)) }
     var caseData by remember(initialCase.id) { mutableStateOf(initialCase) }
@@ -178,6 +179,7 @@ fun CaseFlowScreen(
                 "Analysis of Symptoms",
                 "Evaluation of Symptoms",
                 "Totality of Symptoms",
+                "Selection of Repertory",
                 "Homeopathic Repertorization",
                 "Selection of Acute Similimum",
                 "Management (Advices)",
@@ -207,6 +209,7 @@ fun CaseFlowScreen(
                 "Analysis of Symptoms",
                 "Evaluation of Symptoms",
                 "Totality of Symptoms",
+                "Selection of Repertory",
                 "Homeopathic Repertorization",
                 "Selection of Constitutional Similimum",
                 "Management (Advices)",
@@ -417,6 +420,7 @@ fun CaseFlowScreen(
                         repertorizationResults = repertorizationResults,
                         rubricCount = rubricCount,
                         remedyCount = remedyCount,
+                        onNavigateNext = { if (currentStep < totalSteps - 1) currentStep++ },
                         isDark = isDark
                     )
                 } else {
@@ -431,6 +435,7 @@ fun CaseFlowScreen(
                         repertorizationResults = repertorizationResults,
                         rubricCount = rubricCount,
                         remedyCount = remedyCount,
+                        onNavigateNext = { if (currentStep < totalSteps - 1) currentStep++ },
                         isDark = isDark
                     )
                 }
@@ -625,7 +630,7 @@ fun CaseFlowScreen(
 }
 
 // -------------------------------------------------------------------------------------------------
-// Acute Protocol Step Router (20 Steps)
+// Acute Protocol Step Router (21 Steps)
 // -------------------------------------------------------------------------------------------------
 @Composable
 private fun RenderAcuteStep(
@@ -639,6 +644,7 @@ private fun RenderAcuteStep(
     repertorizationResults: List<RepertorizationScore>,
     rubricCount: Int,
     remedyCount: Int,
+    onNavigateNext: () -> Unit,
     isDark: Boolean
 ) {
     when (step) {
@@ -658,15 +664,16 @@ private fun RenderAcuteStep(
         13 -> AnalysisOfSymptomsStep(formData, onUpdateForm, isDark)
         14 -> EvaluationOfSymptomsStep(formData, onUpdateForm, isDark)
         15 -> TotalityOfSymptomsStep(formData, onUpdateForm, selectedRubrics, onAddRubric, onRemoveRubric, repertoryRepository, isDark)
-        16 -> RepertorizationStep(selectedRubrics, onAddRubric, onRemoveRubric, repertoryRepository, repertorizationResults, rubricCount, remedyCount, isDark)
-        17 -> PrescriptionStep(formData, onUpdateForm, repertorizationResults, isDark, isAcute = true)
-        18 -> ManagementStep(formData, onUpdateForm, isDark)
-        19 -> FollowUpStep(formData, onUpdateForm, isDark)
+        16 -> RepertorySelectionStep(formData, onUpdateForm, repertoryRepository, rubricCount, remedyCount, onNavigateNext, isDark)
+        17 -> RepertorizationStep(selectedRubrics, onAddRubric, onRemoveRubric, repertoryRepository, repertorizationResults, rubricCount, remedyCount, isDark, repertoryType = formData.repertoryType)
+        18 -> PrescriptionStep(formData, onUpdateForm, repertorizationResults, isDark, isAcute = true)
+        19 -> ManagementStep(formData, onUpdateForm, isDark)
+        20 -> FollowUpStep(formData, onUpdateForm, isDark)
     }
 }
 
 // -------------------------------------------------------------------------------------------------
-// Chronic Protocol Step Router (26 Steps)
+// Chronic Protocol Step Router (27 Steps)
 // -------------------------------------------------------------------------------------------------
 @Composable
 private fun RenderChronicStep(
@@ -680,6 +687,7 @@ private fun RenderChronicStep(
     repertorizationResults: List<RepertorizationScore>,
     rubricCount: Int,
     remedyCount: Int,
+    onNavigateNext: () -> Unit,
     isDark: Boolean
 ) {
     when (step) {
@@ -705,9 +713,10 @@ private fun RenderChronicStep(
         19 -> AnalysisOfSymptomsStep(formData, onUpdateForm, isDark)
         20 -> EvaluationOfSymptomsStep(formData, onUpdateForm, isDark)
         21 -> TotalityOfSymptomsStep(formData, onUpdateForm, selectedRubrics, onAddRubric, onRemoveRubric, repertoryRepository, isDark)
-        22 -> RepertorizationStep(selectedRubrics, onAddRubric, onRemoveRubric, repertoryRepository, repertorizationResults, rubricCount, remedyCount, isDark)
-        23 -> PrescriptionStep(formData, onUpdateForm, repertorizationResults, isDark, isAcute = false)
-        24 -> ManagementStep(formData, onUpdateForm, isDark)
-        25 -> FollowUpStep(formData, onUpdateForm, isDark)
+        22 -> RepertorySelectionStep(formData, onUpdateForm, repertoryRepository, rubricCount, remedyCount, onNavigateNext, isDark)
+        23 -> RepertorizationStep(selectedRubrics, onAddRubric, onRemoveRubric, repertoryRepository, repertorizationResults, rubricCount, remedyCount, isDark, repertoryType = formData.repertoryType)
+        24 -> PrescriptionStep(formData, onUpdateForm, repertorizationResults, isDark, isAcute = false)
+        25 -> ManagementStep(formData, onUpdateForm, isDark)
+        26 -> FollowUpStep(formData, onUpdateForm, isDark)
     }
 }
