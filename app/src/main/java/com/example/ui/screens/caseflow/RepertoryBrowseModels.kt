@@ -110,7 +110,12 @@ object ClassicalRepertoryCatalog {
             id = "stomach",
             orderNumber = 14,
             title = "Stomach",
-            rawChapters = listOf("STOMACH")
+            rawChapters = listOf("STOMACH", "APPETITE"),
+            subSections = listOf(
+                BrowseSubSection("All Stomach & Desires", listOf("STOMACH", "APPETITE")),
+                BrowseSubSection("Stomach (General, Nausea, Vomiting)", listOf("STOMACH")),
+                BrowseSubSection("Appetite, Desires & Aversions", listOf("APPETITE"))
+            )
         ),
         BrowseChapterItem(
             id = "abdomen",
@@ -237,13 +242,6 @@ object ClassicalRepertoryCatalog {
     )
 
     val ADDITIONAL_SPECS: List<BrowseChapterItem> = listOf(
-        BrowseChapterItem(
-            id = "appetite",
-            orderNumber = null,
-            title = "Appetite",
-            rawChapters = listOf("APPETITE"),
-            isClassical = false
-        ),
         BrowseChapterItem(
             id = "blood",
             orderNumber = null,
