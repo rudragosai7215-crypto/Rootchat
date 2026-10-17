@@ -115,7 +115,7 @@ fun ChapterSemanticIcon(
                 drawThroat(tint, strokeWidth, w, h)
             }
             // 14. STOMACH -> Stomach organ contour
-            norm == "STOMACH" || (norm.contains("STOMACH") && !norm.contains("APPETITE")) -> {
+            norm == "STOMACH" || norm.contains("STOMACH") -> {
                 drawStomach(tint, strokeWidth, w, h)
             }
             // 15. ABDOMEN -> Intestines / abdominal organ coils
@@ -194,11 +194,7 @@ fun ChapterSemanticIcon(
             norm == "GENERALITIES" || norm.contains("GENERAL") -> {
                 drawHumanFigure(tint, strokeWidth, w, h)
             }
-            // ADDITIONAL 1: APPETITE -> Digestive appetite / stomach
-            norm == "APPETITE" || norm.contains("APPETITE") -> {
-                drawStomach(tint, strokeWidth, w, h)
-            }
-            // ADDITIONAL 2: BLOOD -> Blood drop
+            // ADDITIONAL 1: BLOOD -> Blood drop
             norm == "BLOOD" || norm.contains("BLOOD") || (norm.contains("CIRCULATION") && !norm.contains("HEART")) -> {
                 drawBloodDrop(tint, strokeWidth, w, h)
             }

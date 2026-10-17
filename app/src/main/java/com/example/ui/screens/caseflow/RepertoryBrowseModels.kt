@@ -110,12 +110,7 @@ object ClassicalRepertoryCatalog {
             id = "stomach",
             orderNumber = 14,
             title = "Stomach",
-            rawChapters = listOf("STOMACH", "APPETITE"),
-            subSections = listOf(
-                BrowseSubSection("All Stomach & Desires", listOf("STOMACH", "APPETITE")),
-                BrowseSubSection("Stomach (General, Nausea, Vomiting)", listOf("STOMACH")),
-                BrowseSubSection("Appetite, Desires & Aversions", listOf("APPETITE"))
-            )
+            rawChapters = listOf("STOMACH")
         ),
         BrowseChapterItem(
             id = "abdomen",

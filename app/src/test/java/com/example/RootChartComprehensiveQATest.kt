@@ -835,8 +835,9 @@ class RootChartComprehensiveQATest {
     fun testRepertorySelection_OriginalVsExtendedChaptersAndRubrics() = runBlocking {
         // Original Kent Repertory specifications
         val originalChapters = repertoryRepo.getChapters(RepertoryRepository.REPERTORY_ORIGINAL_KENT)
-        assertEquals("Original Kent Repertory must contain 38 DB chapters (37 classical names + APPETITE)", 38, originalChapters.size)
-        assertTrue("Original Kent must contain APPETITE (authentic Kent Desires and Aversions)", originalChapters.contains("APPETITE"))
+        assertEquals("Original Kent Repertory must contain 37 authentic classical chapters", 37, originalChapters.size)
+        assertFalse("Original Kent must NOT contain APPETITE as a separate chapter", originalChapters.contains("APPETITE"))
+        assertTrue("Original Kent must contain STOMACH (with all Appetite & Desires rubrics)", originalChapters.contains("STOMACH"))
         assertFalse("Original Kent must NOT contain modern BLOOD", originalChapters.contains("BLOOD"))
         assertFalse("Original Kent must NOT contain modern CLINICAL", originalChapters.contains("CLINICAL"))
         assertFalse("Original Kent must NOT contain modern HEART & CIRCULATION", originalChapters.contains("HEART & CIRCULATION"))
@@ -844,10 +845,10 @@ class RootChartComprehensiveQATest {
         val originalRubricCount = repertoryRepo.getRubricCountForType(RepertoryRepository.REPERTORY_ORIGINAL_KENT)
         assertEquals("Original Kent rubrics count must be 73,322", 73322, originalRubricCount)
 
-        // Extended Kent Repertory specifications
+        // Extended Kent Repertory specifications (37 classical + 3 modern additional = 40)
         val extendedChapters = repertoryRepo.getChapters(RepertoryRepository.REPERTORY_EXTENDED_KENT)
-        assertEquals("Extended Kent Repertory must contain all 41 chapters", 41, extendedChapters.size)
-        assertTrue("Extended Kent must contain APPETITE", extendedChapters.contains("APPETITE"))
+        assertEquals("Extended Kent Repertory must contain exactly 40 chapters", 40, extendedChapters.size)
+        assertFalse("Extended Kent must NOT contain APPETITE as a chapter", extendedChapters.contains("APPETITE"))
         assertTrue("Extended Kent must contain BLOOD", extendedChapters.contains("BLOOD"))
         assertTrue("Extended Kent must contain CLINICAL", extendedChapters.contains("CLINICAL"))
         assertTrue("Extended Kent must contain HEART & CIRCULATION", extendedChapters.contains("HEART & CIRCULATION"))
@@ -862,10 +863,10 @@ class RootChartComprehensiveQATest {
             origSearchResults.all { RepertoryRepository.ORIGINAL_KENT_CHAPTERS.contains(it.chapter.uppercase().trim()) }
         )
 
-        // Verify Classical Catalog Stomach includes Appetite/Desires and Chest is separate
+        // Verify Classical Catalog Stomach and Chest
         val stomachSpec = ClassicalRepertoryCatalog.CLASSICAL_SPECS.first { it.id == "stomach" }
-        assertEquals(listOf("STOMACH", "APPETITE"), stomachSpec.rawChapters)
-        assertTrue("Stomach includes authentic Kent Appetite & Desires", stomachSpec.rawChapters.contains("APPETITE"))
+        assertEquals(listOf("STOMACH"), stomachSpec.rawChapters)
+        assertFalse("Appetite chapter is removed and merged into Stomach", stomachSpec.rawChapters.contains("APPETITE"))
 
         val chestSpec = ClassicalRepertoryCatalog.CLASSICAL_SPECS.first { it.id == "chest" }
         assertEquals(listOf("CHEST"), chestSpec.rawChapters)

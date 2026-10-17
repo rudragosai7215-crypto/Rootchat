@@ -720,7 +720,7 @@ fun getChapterSemanticIcon(chapterName: String): ImageVector {
         norm.contains("EAR") || norm.contains("HEAR") -> Icons.Filled.Hearing
         norm.contains("NOSE") || norm.contains("SMELL") -> Icons.Filled.Air
         norm.contains("FACE") || norm.contains("MOUTH") || norm.contains("TEETH") -> Icons.Filled.Face
-        norm.contains("STOMACH") || norm.contains("APPETITE") -> Icons.Filled.Restaurant
+        norm.contains("STOMACH") -> Icons.Filled.Restaurant
         norm.contains("ABDOMEN") -> Icons.Filled.Fastfood
         norm.contains("RECTUM") || norm.contains("STOOL") -> Icons.Filled.CleaningServices
         norm.contains("URIN") || norm.contains("BLADDER") || norm.contains("KIDNEY") || norm.contains("URETHRA") -> Icons.Filled.WaterDrop

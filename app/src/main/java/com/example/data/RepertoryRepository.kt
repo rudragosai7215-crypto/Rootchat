@@ -545,7 +545,7 @@ class RepertoryRepository(
 
         val ORIGINAL_KENT_CHAPTERS: List<String> = listOf(
             "MIND", "VERTIGO", "HEAD", "EYE", "VISION", "EAR", "HEARING", "NOSE",
-            "FACE", "MOUTH", "TEETH", "THROAT", "EXTERNAL THROAT", "STOMACH", "APPETITE",
+            "FACE", "MOUTH", "TEETH", "THROAT", "EXTERNAL THROAT", "STOMACH",
             "ABDOMEN", "RECTUM", "STOOL", "BLADDER", "KIDNEYS", "PROSTATE GLAND",
             "URETHRA", "URINE", "GENITALIA MALE", "GENITALIA FEMALE",
             "LARYNX AND TRACHEA", "RESPIRATION", "COUGH", "EXPECTORATION",
