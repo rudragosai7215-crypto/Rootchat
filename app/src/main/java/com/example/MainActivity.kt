@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.example.data.configureAppCheck(this, intent)
         enableEdgeToEdge()
 
         setContent {
@@ -61,9 +62,10 @@ class MainActivity : ComponentActivity() {
             val isSaving by viewModel.isSaving.collectAsState()
             val saveError by viewModel.saveError.collectAsState()
 
-            // Auto-trigger repertory import on first launch if empty
-            LaunchedEffect(rubricCount) {
-                if (rubricCount == 0 && !importProgress.isImporting) {
+            // Auto-trigger repertory import on first launch only if truly empty after database initialized
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(1000)
+                if (viewModel.rubricCount.value == 0 && !viewModel.importProgress.value.isImporting) {
                     viewModel.triggerRepertoryImport()
                 }
             }

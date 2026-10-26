@@ -6,8 +6,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class RepertoryRepository(
-    private val rubricDao: RubricDao,
-    private val remedyDao: RemedyDao
+    val rubricDao: RubricDao,
+    val remedyDao: RemedyDao
 ) {
     val rubricCount: Flow<Int> = rubricDao.getRubricCount()
     val remedyCount: Flow<Int> = remedyDao.getRemedyCount()

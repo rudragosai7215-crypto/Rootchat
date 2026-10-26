@@ -83,9 +83,10 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val dbName = "rootchart_clinical_v3.db"
+                val dbName = "rootchart_clinical_v4.db"
                 val newDbFile = context.getDatabasePath(dbName)
                 val prevDbFiles = listOf(
+                    context.getDatabasePath("rootchart_clinical_v3.db"),
                     context.getDatabasePath("rootchart_clinical_v2.db"),
                     context.getDatabasePath("rootchart_clinical.db")
                 )

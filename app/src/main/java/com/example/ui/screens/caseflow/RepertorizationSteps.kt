@@ -37,15 +37,19 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -79,8 +83,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.AiRubricSuggester
+import com.example.data.CandidateRubricSuggestion
 import com.example.data.CaseEntity
 import com.example.data.ClinicalFormData
 import com.example.data.MateriaMedicaRepository
@@ -88,6 +95,7 @@ import com.example.data.RepertorizationScore
 import com.example.data.RepertoryRepository
 import com.example.data.RubricEntity
 import com.example.data.SelectedRubric
+import com.example.data.SymptomRubricGroup
 import com.example.ui.screens.materiamedica.MateriaMedicaViewerDialog
 import com.example.ui.theme.CreamIvoryMuted
 import com.example.ui.theme.CreamIvoryText
@@ -321,6 +329,657 @@ fun TotalityOfSymptomsStep(
 }
 
 // -------------------------------------------------------------------------------------------------
+// Section A: AI-Suggested Rubrics (According to Totality of Symptoms)
+// -------------------------------------------------------------------------------------------------
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun AiSuggestedRubricsSectionA(
+    formData: ClinicalFormData?,
+    repertoryType: String,
+    repertoryRepository: RepertoryRepository,
+    selectedRubrics: List<SelectedRubric>,
+    onAddRubric: (SelectedRubric) -> Unit,
+    onRemoveRubric: (Long) -> Unit,
+    onPreviewRubric: (RubricEntity) -> Unit,
+    isDark: Boolean
+) {
+    val aiSuggester = remember(repertoryRepository) { AiRubricSuggester(repertoryRepository) }
+
+    var isSectionExpanded by remember { mutableStateOf(true) }
+    var symptomGroups by remember { mutableStateOf<List<SymptomRubricGroup>?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    var clarificationInputs by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var reanalysingIndices by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val textColor = if (isDark) CreamIvoryText else DarkBrownText
+    val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
+    val tableBorderColor = if (isDark) DarkGlassBorder else LightGlassBorder
+    val accentColor = if (isDark) TerracottaLight else TerracottaPrimary
+
+    LaunchedEffect(formData, repertoryType, refreshTrigger) {
+        if (formData == null) {
+            symptomGroups = emptyList()
+            return@LaunchedEffect
+        }
+        isLoading = true
+        try {
+            symptomGroups = aiSuggester.generateSuggestionsForTotality(formData, repertoryType)
+        } catch (e: Exception) {
+            symptomGroups = emptyList()
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .border(
+                1.dp,
+                if (isDark) accentColor.copy(alpha = 0.45f) else accentColor.copy(alpha = 0.35f),
+                RoundedCornerShape(14.dp)
+            ),
+        color = if (isDark) Color(0x1CB5502F) else Color(0x0EB5502F)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Header Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isSectionExpanded = !isSectionExpanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Ai suggested rubrics",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            fontFamily = FontFamily.Serif
+                        )
+                        Text(
+                            text = "Section-A-rubrics suggested according to totality of symptoms",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = subtextColor
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = { refreshTrigger++ },
+                        modifier = Modifier.size(28.dp).testTag("btn_refresh_ai_rubrics")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Re-analyze totality",
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Icon(
+                        imageVector = if (isSectionExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (isSectionExpanded) "Collapse" else "Expand",
+                        tint = subtextColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            AnimatedVisibility(visible = isSectionExpanded) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (isLoading) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(15.dp),
+                                strokeWidth = 2.dp,
+                                color = accentColor
+                            )
+                            Text(
+                                text = "Interpreting totality symptoms & querying candidate rubrics...",
+                                fontSize = 11.sp,
+                                color = subtextColor,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    } else if (symptomGroups == null || symptomGroups!!.isEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(0.8.dp, tableBorderColor, RoundedCornerShape(8.dp)),
+                            color = if (isDark) Color(0x14000000) else Color(0x0A000000)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(
+                                    text = "No totality symptoms recorded yet.",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = textColor
+                                )
+                                Text(
+                                    text = "Record evaluated symptoms in Step 16 (Totality of Symptoms) to generate Section A rubric suggestions here.",
+                                    fontSize = 10.5.sp,
+                                    color = subtextColor
+                                )
+                            }
+                        }
+                    } else {
+                        // Render each symptom as a separate group
+                        symptomGroups!!.forEach { group ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(0.8.dp, tableBorderColor, RoundedCornerShape(8.dp)),
+                                color = if (isDark) Color(0x1E000000) else Color(0x14FFFFFF)
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    // Symptom Group Header
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Surface(
+                                                color = accentColor.copy(alpha = 0.2f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "SYMPTOM ${group.symptomIndex}",
+                                                    fontSize = 8.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = accentColor,
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                                )
+                                            }
+                                            Text(
+                                                text = group.symptomText,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = textColor,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            if (group.clarificationUsed != null) {
+                                                Surface(
+                                                    color = accentColor.copy(alpha = 0.15f),
+                                                    shape = RoundedCornerShape(3.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Clarified",
+                                                        fontSize = 8.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = accentColor,
+                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = if (group.isAmbiguous) "Needs detail" else "${group.candidates.size}/3",
+                                            fontSize = 9.5.sp,
+                                            fontWeight = if (group.isAmbiguous) FontWeight.SemiBold else FontWeight.Normal,
+                                            color = if (group.isAmbiguous) (if (isDark) Color(0xFFFFB74D) else Color(0xFFD97706)) else subtextColor,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
+
+                                    if (group.isAmbiguous || group.candidates.isEmpty()) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            if (group.isAmbiguous) {
+                                                Surface(
+                                                    color = if (isDark) Color(0x2BFFB74D) else Color(0x18F57F17),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    border = BorderStroke(0.8.dp, if (isDark) Color(0x88FFB74D) else Color(0x66F57F17)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.HelpOutline,
+                                                                contentDescription = null,
+                                                                tint = if (isDark) Color(0xFFFFB74D) else Color(0xFFD97706),
+                                                                modifier = Modifier.size(15.dp)
+                                                            )
+                                                            Text(
+                                                                text = "Clarification Needed",
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = if (isDark) Color(0xFFFFB74D) else Color(0xFFD97706)
+                                                            )
+                                                            if (group.normalizedEnglish.isNotBlank() && !group.normalizedEnglish.equals(group.symptomText, ignoreCase = true)) {
+                                                                Surface(
+                                                                    color = if (isDark) Color(0x22FFFFFF) else Color(0x15000000),
+                                                                    shape = RoundedCornerShape(4.dp)
+                                                                ) {
+                                                                    Text(
+                                                                        text = "Clinical: ${group.normalizedEnglish}",
+                                                                        fontSize = 9.sp,
+                                                                        color = textColor,
+                                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        Text(
+                                                            text = group.clarifyingQuestion ?: "I couldn’t understand this symptom clearly. Please explain it in more detail.",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = textColor,
+                                                            lineHeight = 14.sp
+                                                        )
+
+                                                        if (group.clarificationOptions.isNotEmpty()) {
+                                                            Text(
+                                                                text = "Tap to choose interpretation:",
+                                                                fontSize = 9.5.sp,
+                                                                fontWeight = FontWeight.SemiBold,
+                                                                color = subtextColor
+                                                            )
+                                                            Row(
+                                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                            ) {
+                                                                group.clarificationOptions.forEach { opt ->
+                                                                    Surface(
+                                                                        color = if (isDark) Color(0x33B5502F) else Color(0x18B5502F),
+                                                                        shape = RoundedCornerShape(12.dp),
+                                                                        border = BorderStroke(0.7.dp, accentColor),
+                                                                        modifier = Modifier.clickable {
+                                                                            clarificationInputs = clarificationInputs + (group.symptomIndex to opt.clarificationText)
+                                                                            coroutineScope.launch {
+                                                                                reanalysingIndices = reanalysingIndices + group.symptomIndex
+                                                                                try {
+                                                                                    val updatedGroup = aiSuggester.generateCandidatesForSymptom(
+                                                                                        symptomIndex = group.symptomIndex,
+                                                                                        symptomText = group.symptomText,
+                                                                                        repertoryType = repertoryType,
+                                                                                        clarification = opt.clarificationText,
+                                                                                        category = if (opt.targetChapter == "MIND") "Mental General" else group.category
+                                                                                    )
+                                                                                    symptomGroups = symptomGroups?.map {
+                                                                                        if (it.symptomIndex == group.symptomIndex) updatedGroup else it
+                                                                                    }
+                                                                                } catch (e: Exception) {
+                                                                                    android.util.Log.e("RepertorizationSteps", "Option select failed: ${e.message}")
+                                                                                } finally {
+                                                                                    reanalysingIndices = reanalysingIndices - group.symptomIndex
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    ) {
+                                                                        Text(
+                                                                            text = "👉 ${opt.label}",
+                                                                            fontSize = 10.sp,
+                                                                            fontWeight = FontWeight.SemiBold,
+                                                                            color = accentColor,
+                                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                Surface(
+                                                    color = if (isDark) Color(0x18000000) else Color(0x0C000000),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    border = BorderStroke(0.6.dp, tableBorderColor),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Info,
+                                                            contentDescription = null,
+                                                            tint = subtextColor,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                        Text(
+                                                            text = group.note ?: "No suitable matching rubric found.",
+                                                            fontSize = 10.5.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = subtextColor,
+                                                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Text input box for user clarification in English, Hindi, Gujarati, or Hinglish
+                                            val currentClarification = clarificationInputs[group.symptomIndex] ?: ""
+                                            val isReanalysing = reanalysingIndices.contains(group.symptomIndex)
+
+                                            OutlinedTextField(
+                                                value = currentClarification,
+                                                onValueChange = { newVal ->
+                                                    clarificationInputs = clarificationInputs + (group.symptomIndex to newVal)
+                                                },
+                                                placeholder = {
+                                                    Text(
+                                                        text = "Explain in English, Hindi, Gujarati, or Hinglish (e.g. sir dard dhoop se, mathe dukhava, nausea after cold drinks)...",
+                                                        fontSize = 10.sp,
+                                                        color = subtextColor
+                                                    )
+                                                },
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .testTag("input_clarify_symptom_${group.symptomIndex}"),
+                                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, color = textColor),
+                                                singleLine = false,
+                                                maxLines = 2,
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = accentColor,
+                                                    unfocusedBorderColor = tableBorderColor,
+                                                    focusedTextColor = textColor,
+                                                    unfocusedTextColor = textColor,
+                                                    cursorColor = accentColor
+                                                )
+                                            )
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Button(
+                                                    onClick = {
+                                                        val trimmed = currentClarification.trim()
+                                                        if (trimmed.isNotBlank() && !isReanalysing) {
+                                                            coroutineScope.launch {
+                                                                reanalysingIndices = reanalysingIndices + group.symptomIndex
+                                                                try {
+                                                                    val updatedGroup = aiSuggester.generateCandidatesForSymptom(
+                                                                        symptomIndex = group.symptomIndex,
+                                                                        symptomText = group.symptomText,
+                                                                        repertoryType = repertoryType,
+                                                                        clarification = trimmed,
+                                                                        category = group.category
+                                                                    )
+                                                                    symptomGroups = symptomGroups?.map {
+                                                                        if (it.symptomIndex == group.symptomIndex) updatedGroup else it
+                                                                    }
+                                                                } catch (e: Exception) {
+                                                                    android.util.Log.e("RepertorizationSteps", "Re-analyse symptom failed: ${e.message}")
+                                                                } finally {
+                                                                    reanalysingIndices = reanalysingIndices - group.symptomIndex
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    enabled = currentClarification.isNotBlank() && !isReanalysing,
+                                                    colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                                    modifier = Modifier
+                                                        .height(28.dp)
+                                                        .testTag("btn_reanalyse_symptom_${group.symptomIndex}")
+                                                ) {
+                                                    if (isReanalysing) {
+                                                        CircularProgressIndicator(
+                                                            modifier = Modifier.size(11.dp),
+                                                            strokeWidth = 1.5.dp,
+                                                            color = Color.White
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("Re-analysing...", fontSize = 10.sp, color = Color.White)
+                                                    } else {
+                                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(11.dp), tint = Color.White)
+                                                        Spacer(modifier = Modifier.width(3.dp))
+                                                        Text("Re-analyse Symptom", fontSize = 10.sp, color = Color.White)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            group.candidates.forEach { candidate ->
+                                                val isSelected = selectedRubrics.any { it.id == candidate.rubric.id }
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(
+                                                            width = if (isSelected) 1.5.dp else 0.8.dp,
+                                                            color = if (isSelected) accentColor else tableBorderColor,
+                                                            shape = RoundedCornerShape(8.dp)
+                                                        )
+                                                        .background(
+                                                            if (isSelected) accentColor.copy(alpha = 0.15f)
+                                                            else if (isDark) Color(0x18FFFFFF)
+                                                            else Color(0x0C000000)
+                                                        )
+                                                        .clickable { onPreviewRubric(candidate.rubric) }
+                                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                                    color = Color.Transparent
+                                                ) {
+                                                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                        // Candidate rank label + visual AI confidence meter + percentage
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                                modifier = Modifier.weight(1f, fill = false)
+                                                            ) {
+                                                                val rankBadgeColor = when (candidate.rank) {
+                                                                    1 -> if (isDark) Color(0xFFFFD54F) else Color(0xFFD97706)
+                                                                    2 -> if (isDark) Color(0xFFCFD8DC) else Color(0xFF546E7A)
+                                                                    else -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828) // 3rd candidate is Red
+                                                                }
+                                                                val rankPrefix = when (candidate.rank) {
+                                                                    1 -> "🥇"
+                                                                    2 -> "🥈"
+                                                                    else -> "🥉"
+                                                                }
+                                                                Text(
+                                                                    text = "$rankPrefix ${candidate.rankLabel}",
+                                                                    fontSize = 10.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = rankBadgeColor,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+
+                                                            // Visual AI Confidence Meter Bar & Percentage (compact & self-contained pill)
+                                                            val meterColor = when {
+                                                                candidate.rank == 3 || candidate.confidencePercent < 75 -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828) // 3rd candidate / <75% is Red
+                                                                candidate.confidencePercent >= 90 -> if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
+                                                                candidate.confidencePercent >= 80 -> if (isDark) Color(0xFFFFB74D) else Color(0xFFD97706)
+                                                                else -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828)
+                                                            }
+
+                                                            Surface(
+                                                                color = meterColor.copy(alpha = if (isDark) 0.16f else 0.10f),
+                                                                shape = RoundedCornerShape(10.dp),
+                                                                border = BorderStroke(0.6.dp, meterColor.copy(alpha = 0.45f))
+                                                            ) {
+                                                                Row(
+                                                                    verticalAlignment = Alignment.CenterVertically,
+                                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                ) {
+                                                                    // Mini visual progress meter bar
+                                                                    Box(
+                                                                        modifier = Modifier
+                                                                            .width(26.dp)
+                                                                            .height(4.dp)
+                                                                            .clip(RoundedCornerShape(2.dp))
+                                                                            .background(if (isDark) Color(0x33FFFFFF) else Color(0x22000000))
+                                                                    ) {
+                                                                        Box(
+                                                                            modifier = Modifier
+                                                                                .fillMaxHeight()
+                                                                                .fillMaxWidth(fraction = (candidate.confidencePercent / 100f).coerceIn(0f, 1f))
+                                                                                .background(meterColor)
+                                                                        )
+                                                                    }
+                                                                    Text(
+                                                                        text = "${candidate.confidencePercent}%",
+                                                                        fontSize = 10.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        color = meterColor
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // Rubric Text (Canonical Chapter + Exact Rubric Text)
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Column(modifier = Modifier.weight(1f)) {
+                                                                Text(
+                                                                    text = candidate.rubric.chapter.uppercase(),
+                                                                    fontSize = 8.5.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = accentColor
+                                                                )
+                                                                Text(
+                                                                    text = candidate.rubric.rubricText,
+                                                                    fontSize = 11.5.sp,
+                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                                    color = textColor,
+                                                                    lineHeight = 14.sp
+                                                                )
+                                                                Row(
+                                                                    verticalAlignment = Alignment.CenterVertically,
+                                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                                    modifier = Modifier.padding(top = 2.dp)
+                                                                ) {
+                                                                    Surface(
+                                                                        color = if (isDark) Color(0x2B401E17) else Color(0x14B5502F),
+                                                                        shape = RoundedCornerShape(3.dp)
+                                                                    ) {
+                                                                        Text(
+                                                                            text = candidate.relevanceGrade,
+                                                                            fontSize = 8.5.sp,
+                                                                            fontWeight = FontWeight.SemiBold,
+                                                                            color = accentColor,
+                                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                                        )
+                                                                    }
+                                                                    val cleanExp = candidate.explanation
+                                                                        .replace("(?i)verified against local database schema based on key symptom terminology\\.?".toRegex(), "")
+                                                                        .replace("(?i)verified against local database.*".toRegex(), "")
+                                                                        .replace("(?i)found in database".toRegex(), "")
+                                                                        .trim()
+                                                                    if (cleanExp.isNotBlank()) {
+                                                                        Text(
+                                                                            text = "• $cleanExp",
+                                                                            fontSize = 9.sp,
+                                                                            color = subtextColor,
+                                                                            maxLines = 1,
+                                                                            overflow = TextOverflow.Ellipsis
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            Spacer(modifier = Modifier.width(6.dp))
+
+                                                            // Toggle Selection Button (Compact height 32.dp, meets touch target)
+                                                            if (isSelected) {
+                                                                Button(
+                                                                    onClick = { onRemoveRubric(candidate.rubric.id) },
+                                                                    colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                                                                    shape = RoundedCornerShape(6.dp),
+                                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                                                    modifier = Modifier
+                                                                        .height(32.dp)
+                                                                        .testTag("btn_deselect_rubric_${candidate.rubric.id}")
+                                                                ) {
+                                                                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp), tint = Color.White)
+                                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                                    Text("Selected", fontSize = 10.5.sp, color = Color.White)
+                                                                }
+                                                            } else {
+                                                                OutlinedButton(
+                                                                    onClick = {
+                                                                        val remMap = RepertoryRepository.parseRubricRemedies(candidate.rubric.remediesJson)
+                                                                        onAddRubric(
+                                                                            SelectedRubric(
+                                                                                id = candidate.rubric.id,
+                                                                                chapter = candidate.rubric.chapter,
+                                                                                rubricText = candidate.rubric.rubricText,
+                                                                                remedies = remMap
+                                                                            )
+                                                                        )
+                                                                    },
+                                                                    shape = RoundedCornerShape(6.dp),
+                                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                                                    modifier = Modifier
+                                                                        .height(32.dp)
+                                                                        .testTag("btn_select_rubric_${candidate.rubric.id}")
+                                                                ) {
+                                                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp), tint = accentColor)
+                                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                                    Text("Select", fontSize = 10.5.sp, color = textColor)
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 // Repertorization Step
 // -------------------------------------------------------------------------------------------------
 @OptIn(ExperimentalLayoutApi::class)
@@ -336,7 +995,8 @@ fun RepertorizationStep(
     isDark: Boolean,
     materiaMedicaRepository: MateriaMedicaRepository? = null,
     caseEntity: CaseEntity? = null,
-    repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
+    repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT,
+    formData: ClinicalFormData? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -579,7 +1239,7 @@ fun RepertorizationStep(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Search Bar for Full Repertory Database
                 OutlinedTextField(
@@ -688,6 +1348,20 @@ fun RepertorizationStep(
                 } else if (searchQuery.isNotBlank() && !isSearching) {
                     Text("No rubrics found matching '$searchQuery'. Try a broader keyword or browse chapters.", fontSize = 11.5.sp, color = subtextColor)
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Section A: AI-Suggested Rubrics (According to Totality of Symptoms)
+                AiSuggestedRubricsSectionA(
+                    formData = formData,
+                    repertoryType = repertoryType,
+                    repertoryRepository = repertoryRepository,
+                    selectedRubrics = selectedRubrics,
+                    onAddRubric = onAddRubric,
+                    onRemoveRubric = onRemoveRubric,
+                    onPreviewRubric = { rubricForPreview = it },
+                    isDark = isDark
+                )
 
                 // Quick Switch to Tab 1 (Results)
                 if (selectedRubrics.isNotEmpty()) {
