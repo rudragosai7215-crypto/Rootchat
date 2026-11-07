@@ -1044,25 +1044,43 @@ class AiRubricSuggester(
             "headache" to "head pain", "headaches" to "head pain",
             "toothache" to "teeth pain", "stomachache" to "stomach pain",
             "backache" to "back pain", "earache" to "ear pain",
-            // Hindi / Gujarati / Hinglish terms
-            "mathe" to "head", "mathu" to "head", "sir" to "head", "sar" to "head", "mastak" to "head",
-            "dukhava" to "pain", "dard" to "pain", "dukhav" to "pain", "pida" to "pain",
+            // Head / Pain
+            "mathe" to "head", "mathu" to "head", "sir" to "head", "sar" to "head", "mastak" to "head", "kapad" to "forehead",
+            "dukhava" to "pain", "dard" to "pain", "dukhav" to "pain", "pida" to "pain", "dukhe" to "pain", "dukh" to "pain", "peeda" to "pain",
             "chakkar" to "vertigo", "chakar" to "vertigo",
+            // Mental / Emotional
             "gussa" to "anger", "gusso" to "anger", "dar" to "fear", "bhay" to "fear", "chinta" to "anxiety",
+            "jiddi" to "obstinate headstrong", "jidd" to "obstinate headstrong", "hathi" to "obstinate", "hath" to "obstinate",
+            "radvu" to "weeping", "rona" to "weeping", "udaas" to "sadness", "udasi" to "sadness",
+            // Sensory & Head Organs
             "aankh" to "eye", "aankho" to "eye", "kaan" to "ear", "naak" to "nose",
+            "dant" to "teeth", "daant" to "teeth", "gala" to "throat", "galo" to "throat",
+            // Abdomen / Gastro-intestinal
             "pet" to "abdomen", "pota" to "abdomen", "abdominal" to "abdomen",
             "gas" to "flatulence", "gassy" to "flatulence", "bloating" to "distension flatulence",
-            "bloated" to "distension", "afra" to "distension flatulence", "aaphra" to "distension flatulence",
-            "vayu" to "flatulence", "vaat" to "flatulence",
-            "ulti" to "vomiting nausea", "chardi" to "vomiting nausea",
-            "khansi" to "cough", "udhras" to "cough", "chhati" to "chest", "chhathi" to "chest",
+            "bloated" to "distension", "afra" to "distension flatulence", "aaphra" to "distension flatulence", "aafro" to "distension flatulence",
+            "vayu" to "flatulence", "vaat" to "flatulence", "aadhman" to "flatulence",
+            "ulti" to "vomiting nausea", "chardi" to "vomiting nausea", "ubka" to "nausea",
+            // Stool & Bowels
+            "sandas" to "stool", "tatti" to "stool", "jhada" to "stool diarrhea", "dast" to "stool diarrhea",
+            "kadak" to "hard", "kathin" to "hard", "mal" to "stool", "malavarodh" to "constipation", "kabjiat" to "constipation", "kabj" to "constipation", "kabziyat" to "constipation",
+            // Respiratory / Chest
+            "khansi" to "cough", "udhras" to "cough", "dhans" to "cough", "chhati" to "chest", "chhathi" to "chest", "saans" to "respiration", "swas" to "respiration",
+            // Extremities / Joints
             "guthno" to "knee", "ghutna" to "knee", "pag" to "extremities leg", "pair" to "extremities leg",
-            "haath" to "extremities hand", "kamar" to "back", "peeth" to "back", "sandha" to "joints",
-            "dhoop" to "sun light", "tadvu" to "sun", "garmi" to "warmth heat", "thand" to "cold", "thandi" to "cold",
-            "raat" to "night", "ratri" to "night", "savare" to "morning", "subah" to "morning",
-            "chalva" to "walking motion", "halvachalva" to "motion",
-            "mithai" to "sweets desire", "iccha" to "desire craving", "tamanna" to "desire",
-            "khava" to "eating"
+            "haath" to "extremities hand", "kamar" to "back", "peeth" to "back", "sandha" to "joints", "sandhi" to "joints",
+            // Modalities: Sun, Weather, Time
+            "dhoop" to "sun light", "tadvu" to "sun", "suraj" to "sun", "garmi" to "warmth heat", "thand" to "cold", "thandi" to "cold",
+            "raat" to "night", "ratri" to "night", "savare" to "morning", "subah" to "morning", "bapore" to "noon", "dopahar" to "noon",
+            "chalva" to "walking motion", "halvachalva" to "motion", "chalna" to "walking motion", "aaram" to "rest",
+            // Desires & Cravings / Thirst
+            "mithai" to "sweets desire", "iccha" to "desire craving", "tamanna" to "desire", "ichha" to "desire craving",
+            "khava" to "eating", "peeva" to "drinking", "peena" to "drinking",
+            "pyas" to "thirst", "pyaas" to "thirst", "taras" to "thirst",
+            // Skin
+            "chamdi" to "skin", "khajli" to "itching", "kharas" to "itching", "chhale" to "eruptions", "fodi" to "eruptions",
+            // Fever / Chill
+            "bukhar" to "fever", "tav" to "fever", "kapkapi" to "chill shivering", "dhrujari" to "shivering"
         )
 
         val rawWords = cleanLower.split(" ").filter { it.length >= 2 }
@@ -1082,7 +1100,8 @@ class AiRubricSuggester(
         val hasExplicitMentalCategory = category.contains("mental", ignoreCase = true)
         val hasMentalContext = cleanLower.contains("child") || cleanLower.contains("mind") ||
                                cleanLower.contains("disposition") || cleanLower.contains("temper") ||
-                               cleanLower.contains("mood") || cleanLower.contains("stubborn")
+                               cleanLower.contains("mood") || cleanLower.contains("stubborn") ||
+                               cleanLower.contains("jiddi") || cleanLower.contains("jidd")
 
         if (isBareObstinate && !hasExplicitMentalCategory && !hasMentalContext && clarification.isBlank()) {
             return SemanticInterpretation(
@@ -1125,7 +1144,8 @@ class AiRubricSuggester(
         }
 
         // Step 2: Kent Classical Filing Conventions
-        val isMental = hasExplicitMentalCategory || hasMentalContext || isMentalSymptom(cleanLower)
+        val isMental = hasExplicitMentalCategory || hasMentalContext || isMentalSymptom(cleanLower) ||
+                       cleanLower.contains("jiddi") || cleanLower.contains("jidd") || cleanLower.contains("gussa")
         val targetChapters = mutableListOf<String>()
         val normLower = normalizedEnglish.lowercase()
 
@@ -1133,25 +1153,31 @@ class AiRubricSuggester(
             "the", "and", "with", "from", "for", "due", "into", "over", "than", "that", "this",
             "agg", "amel", "a", "an", "of", "to", "in", "at", "by", "on", "or", "is", "are",
             "was", "were", "be", "been", "having", "has", "had", "got", "during", "after",
-            "ni", "ki", "ka"
+            // Hindi / Gujarati / Hinglish connectors & auxiliaries
+            "ni", "ki", "ka", "ke", "ko", "se", "me", "ma", "par", "pe", "che", "chhe", "hai", "hain", "tha", "thi",
+            "hota", "hoti", "hote", "ane", "ne", "pan", "chade", "chadhe", "badhta", "badhti", "lagta", "lagti",
+            "bahut", "bahu", "ghani", "kuch", "kai", "wala", "wali", "valo", "vali", "no", "na", "nu", "rehta", "rahe"
         )
 
         val isCravings = normLower.contains("craving") || normLower.contains("desire") ||
                          normLower.contains("desires") || normLower.contains("wants") ||
                          normLower.contains("likes") || normLower.contains("sweet") ||
                          normLower.contains("thirst") || normLower.contains("iccha") ||
-                         normLower.contains("tamanna")
+                         normLower.contains("ichha") || normLower.contains("tamanna")
 
         val isAversion = normLower.contains("aversion") || normLower.contains("dislike") ||
                          normLower.contains("hate")
 
         val isStool = normLower.contains("stool") || normLower.contains("stools") ||
                       normLower.contains("constipation") || normLower.contains("diarrhea") ||
-                      normLower.contains("diarrhoea")
+                      normLower.contains("diarrhoea") || normLower.contains("sandas") ||
+                      normLower.contains("kadak") || normLower.contains("malavarodh") ||
+                      normLower.contains("kabjiat")
 
         val isGasOrFlatulence = normLower.contains("gas") || normLower.contains("flatulence") ||
                                 normLower.contains("flatus") || normLower.contains("bloat") ||
-                                normLower.contains("distension")
+                                normLower.contains("distension") || normLower.contains("aafro") ||
+                                normLower.contains("afra") || normLower.contains("aaphra")
 
         if (isCravings) {
             // Kent's Repertory: Cravings & Aversions filed under STOMACH
@@ -1240,6 +1266,11 @@ class AiRubricSuggester(
                     searchPhrases.add("stool hard")
                     keywords.add("hard")
                     keywords.add("stool")
+                } else if (normLower.contains("constipation") || normLower.contains("malavarodh") || normLower.contains("kabj")) {
+                    searchPhrases.add("constipation")
+                    searchPhrases.add("hard")
+                    keywords.add("constipation")
+                    keywords.add("hard")
                 } else {
                     for (tok in meaningfulTokens) {
                         searchPhrases.add(tok)
@@ -1263,6 +1294,13 @@ class AiRubricSuggester(
                 }
             }
             isMental -> {
+                if (normLower.contains("obstinate") || normLower.contains("headstrong")) {
+                    searchPhrases.add("obstinate")
+                    searchPhrases.add("obstinate, children")
+                    searchPhrases.add("headstrong")
+                    keywords.add("obstinate")
+                    keywords.add("headstrong")
+                }
                 for (tok in meaningfulTokens) {
                     searchPhrases.add(tok)
                     keywords.add(tok)
@@ -1272,13 +1310,6 @@ class AiRubricSuggester(
                     searchPhrases.add("${meaningfulTokens[1]} ${meaningfulTokens[0]}")
                     searchPhrases.add("${meaningfulTokens[0]}, ${meaningfulTokens[1]}")
                     searchPhrases.add("${meaningfulTokens[1]}, ${meaningfulTokens[0]}")
-                }
-                if (normLower.contains("obstinate") || normLower.contains("headstrong")) {
-                    searchPhrases.add("obstinate, headstrong")
-                    searchPhrases.add("obstinate")
-                    searchPhrases.add("headstrong")
-                    keywords.add("obstinate")
-                    keywords.add("headstrong")
                 }
             }
             else -> {
