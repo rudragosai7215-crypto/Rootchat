@@ -419,7 +419,18 @@ class RepertoryRepository(
             rubricDao.searchRubricsInChapters(chapters, cleanedQuery, limit).forEach { candidates[it.id] = it }
         }
 
-        // 2. Fetch individual word candidates for multi-word queries
+        // 2. Fetch multi-token candidates from chapters (e.g. pain + right, fear + dark, desires + sweet)
+        if (tokens.size >= 3) {
+            rubricDao.searchRubricsTripleInChapters(chapters, tokens[0], tokens[1], tokens[2], limit = 80).forEach { candidates[it.id] = it }
+        }
+        if (tokens.size >= 2) {
+            rubricDao.searchRubricsMultiInChapters(chapters, tokens[0], tokens[1], limit = 80).forEach { candidates[it.id] = it }
+            if (tokens.size >= 3) {
+                rubricDao.searchRubricsMultiInChapters(chapters, tokens[0], tokens[2], limit = 60).forEach { candidates[it.id] = it }
+            }
+        }
+
+        // 3. Fetch individual word candidates for multi-word queries with relevance
         for (tok in tokens.take(4)) {
             if (tok.length >= 3) {
                 rubricDao.searchRubricsInChapters(chapters, tok, limit = 60).forEach { candidates[it.id] = it }
@@ -428,7 +439,7 @@ class RepertoryRepository(
 
         if (candidates.isEmpty()) return@withContext emptyList()
 
-        // 3. Prioritize: Exact phrase matches (Highest Priority) first, then related word matches
+        // 4. Prioritize: Exact phrase matches (Highest Priority) first, then related word matches
         val exactMatches = mutableListOf<Pair<RubricEntity, Int>>()
         val wordMatches = mutableListOf<Pair<RubricEntity, Int>>()
 
@@ -463,7 +474,10 @@ class RepertoryRepository(
                     }
                 }
                 if (matchedTokens > 0) {
-                    val score = (matchedTokens * 1000) - (cand.rubricText.length / 4)
+                    var score = (matchedTokens * 1000) - (cand.rubricText.length / 4)
+                    if (cand.rubricText.startsWith(tokens[0], ignoreCase = true) || rubricClean.startsWith(tokens[0])) {
+                        score += 50_000 // Boost primary sensation match (pain, fear, desires, etc.)
+                    }
                     wordMatches.add(Pair(cand, score))
                 }
             }

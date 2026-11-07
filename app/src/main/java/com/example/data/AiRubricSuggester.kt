@@ -593,8 +593,8 @@ class AiRubricSuggester(
         clarification: String = "",
         category: String = ""
     ): SymptomRubricGroup {
-        // Step 1 to 3: Translate, analyze domain with Kent conventions, and check ambiguity
-        val interpretation = interpretSymptomSemanticConcepts(symptomText, clarification, category)
+        // Step 1 to 3: Translate, analyze domain with Kent conventions, and check ambiguity respecting selected repertory
+        val interpretation = interpretSymptomSemanticConcepts(symptomText, clarification, category, repertoryType)
 
         if (interpretation.isAmbiguous) {
             return SymptomRubricGroup(
@@ -638,7 +638,33 @@ class AiRubricSuggester(
             if (retrievedCandidates.size >= 8) break
         }
 
-        // 2b. Query using specific clinical keywords only if search phrases returned no candidates
+        // 2b. Multi-token smart search if searchPhrases returned fewer than 3 candidates
+        if (retrievedCandidates.size < 3 && interpretation.keywords.size >= 2) {
+            val kws = interpretation.keywords.filter { it.length >= 3 }
+            if (kws.size >= 2) {
+                val multiMatches = repertoryRepository.rubricDao.searchRubricsMultiInChapters(
+                    chapters = targetChapters,
+                    term1 = kws[0],
+                    term2 = kws[1],
+                    limit = 30
+                )
+                val filtered = if (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT) {
+                    multiMatches.filter { RepertoryRepository.ORIGINAL_KENT_CHAPTERS.contains(it.chapter.uppercase().trim()) }
+                } else multiMatches
+                for (match in filtered) {
+                    if (retrievedCandidates.none { it.id == match.id }) {
+                        retrievedCandidates.add(match)
+                        candidateExplanations[match.id] = Pair(
+                            "High Relevance",
+                            "Repertorial correspondence for '${kws[0]}' and '${kws[1]}' in ${match.chapter.lowercase()}."
+                        )
+                    }
+                    if (retrievedCandidates.size >= 8) break
+                }
+            }
+        }
+
+        // 2c. Query using specific clinical keywords only if search phrases returned no candidates
         if (retrievedCandidates.isEmpty()) {
             for (keyword in interpretation.keywords) {
                 val matches = searchRubricsConstrained(keyword, targetChapters, repertoryType)
@@ -656,7 +682,7 @@ class AiRubricSuggester(
             }
         }
 
-        // 2c. Direct token search fallback if database still returned nothing
+        // 2d. Direct token search fallback if database still returned nothing
         if (retrievedCandidates.isEmpty()) {
             val directQuery = if (clarification.isNotBlank()) "$symptomText $clarification" else symptomText
             val directMatches = searchRubricsConstrained(directQuery, targetChapters, repertoryType)
@@ -766,12 +792,13 @@ class AiRubricSuggester(
     suspend fun interpretSymptomSemanticConcepts(
         symptomText: String,
         clarification: String = "",
-        category: String = ""
+        category: String = "",
+        repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
     ): SemanticInterpretation = withContext(Dispatchers.IO) {
         val model = semanticModel
         if (model != null) {
             try {
-                val aiResult = callGeminiForRepertoryConcepts(symptomText, clarification, category)
+                val aiResult = callGeminiForRepertoryConcepts(symptomText, clarification, category, repertoryType)
                 if (aiResult != null && (aiResult.searchPhrases.isNotEmpty() || aiResult.keywords.isNotEmpty() || aiResult.isAmbiguous)) {
                     return@withContext aiResult
                 }
@@ -781,60 +808,75 @@ class AiRubricSuggester(
         }
 
         // Local Clinical Concept Extractor (Offline / Graceful fallback)
-        localClinicalExtraction(symptomText, clarification, category)
+        localClinicalExtraction(symptomText, clarification, category, repertoryType)
     }
 
     suspend fun callGeminiForRepertoryConcepts(
         symptomText: String,
         clarification: String = "",
-        category: String = ""
+        category: String = "",
+        repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
     ): SemanticInterpretation? = withContext(Dispatchers.IO) {
         val model = semanticModel ?: return@withContext null
 
+        val isOriginalKent = (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT)
+        val repertoryName = if (isOriginalKent) "Original Kent's Repertory (Classical 37 Chapters)" else "Extended Kent's Repertory (Full Clinical Repertory)"
+        val repertoryConstraint = if (isOriginalKent) {
+            """
+            STRICT USER REPERTORY: ORIGINAL KENT REPERTORY.
+            Suggest ONLY from Kent's 37 classical chapters:
+            MIND, VERTIGO, HEAD, EYE, VISION, EAR, HEARING, NOSE, FACE, MOUTH, TEETH, THROAT, EXTERNAL THROAT, STOMACH, ABDOMEN, RECTUM, STOOL, BLADDER, KIDNEYS, PROSTATE GLAND, URETHRA, URINE, GENITALIA MALE, GENITALIA FEMALE, LARYNX AND TRACHEA, RESPIRATION, COUGH, EXPECTORATION, CHEST, BACK, EXTREMITIES, SLEEP, CHILL, FEVER, PERSPIRATION, SKIN, GENERALITIES.
+            DO NOT suggest modern extended chapters.
+            """
+        } else {
+            """
+            USER REPERTORY: EXTENDED REPERTORY.
+            You may suggest from Kent's 37 classical chapters and all extended clinical chapters.
+            """
+        }
+
         val prompt = """
-            You are an expert homeopathic clinical repertorization assistant. Analyze this totality symptom for Kent's Repertory following the strict 6-step methodology:
+            You are an expert clinical homeopathic repertorization director. Analyze this totality symptom for Kent's Repertory:
             Symptom: "$symptomText"
-            ${if (category.isNotBlank()) "Clinical Category (from case totality evaluation): \"$category\"" else ""}
-            ${if (clarification.isNotBlank()) "Additional Doctor/Patient Clarification (in English, Hindi, Gujarati, or Hinglish): \"$clarification\"" else ""}
+            ${if (category.isNotBlank()) "Clinical Category: \"$category\"" else ""}
+            ${if (clarification.isNotBlank()) "Doctor Clarification: \"$clarification\"" else ""}
+            Selected Repertory: $repertoryName
+            $repertoryConstraint
 
-            Step 1: Language normalize + clinical translate:
-            - Translate from Hindi / Gujarati / Hinglish / English mix into standard clinical English preserving clinical intent (clinical intent translation, not literal translation).
+            Step 1: Clinical Intent Understanding & Translation:
+            - If written in Hindi, Gujarati, Hinglish or mixed expressions, translate the clinical meaning accurately into standard homeopathic English.
 
-            Step 2: Deep symptom analysis (Kent's classical repertory filing conventions):
-            - Determine clinical domain: Mind, Generalities, Particulars, or specific organ.
-            - Food/drink desires, cravings, aversions, and thirst -> MUST be filed under STOMACH chapter (never Generalities).
-            - Generalized environmental modalities (weather, air, seasons, temperature, time, position, motion) -> GENERALITIES.
-            - Mental traits, delusions, anxieties, emotional dispositions -> MIND.
-            - Local discharges, pains, and modalities -> specific organ chapter (e.g. HEAD, NOSE, EYE, RECTUM, CHEST, EXTREMITIES, SKIN).
-            - Generic multi-sense words (e.g. "obstinate", "irritable"): determine if referring to a mental disposition or a physical condition (e.g. obstinate constipation, obstinate coryza).
+            Step 2: Classical Repertory Decomposition:
+            - In Kent's Repertory, rubrics ALWAYS start with the core sensation/pathology, followed by comma and sub-rubric:
+              - In HEAD: starts with "pain" -> e.g. "pain, sides, right", "pain, sides, left", "pain, pulsating", "pain, sun", "pain, forehead"
+              - In STOMACH: desires/cravings start with "desires" -> e.g. "desires, sweets", "desires, sweets, sugar", "desires, cold drinks"; aversions start with "aversion"
+              - In MIND: fears start with "fear" -> e.g. "fear, dark", "fear, death"; traits start with "obstinate", "weeping", "anxiety"
+              - In EXTREMITIES: starts with "pain" -> e.g. "pain, knee", "pain, leg"
+              - In STOOL: starts with "hard", "constipation", "diarrhea"
+              - In FEVER / CHILL: starts with "chill", "heat"
 
-            Step 3: Ambiguity check -> user clarification:
-            - If 2+ clearly distinct clinical interpretations exist (and Category does not resolve it, or symptom lacks sufficient anatomical/character detail like just "pain", "sick", or bare "obstinate"):
+            Step 3: Ambiguity Check:
+            - If 2+ distinct interpretations exist and symptom lacks sufficient anatomical/character detail (like bare "obstinate"):
               - Set "isAmbiguous": true
-              - Provide "clarifyingQuestion" (e.g., "'Obstinate' se aapka matlab mental stubbornness hai ya koi physical symptom (jaise constipation) jo resolve nahi ho raha?")
-              - Provide "clarificationOptions" with selectable choices.
-            - If symptom has sufficient clinical clarity or category resolves it:
-              - Set "isAmbiguous": false
+              - Provide "clarifyingQuestion" and "clarificationOptions".
+            - Otherwise set "isAmbiguous": false.
 
-            Step 4: Target Chapters & Repertory Concepts:
-            - Provide "targetChapters" according to Kent's 37 chapters.
-            - Provide "searchPhrases" (2-3 concise repertorial phrases in English, e.g. "head pain pulsating", "stomach desires sweets").
-            - Provide "keywords" (2-3 key terms).
-            - Provide "rationale".
-
+            Step 4: Output Kent-formatted searchPhrases and keywords:
             Respond with JSON only:
             {
               "normalizedClinicalEnglish": "Standard clinical English description",
-              "primaryDomain": "MIND | STOMACH | GENERALITIES | PARTICULAR",
-              "targetChapters": ["CHAPTER1"],
+              "primaryDomain": "MIND | HEAD | STOMACH | GENERALITIES | PARTICULAR",
+              "targetChapters": ["HEAD"],
               "isAmbiguous": false,
               "clarifyingQuestion": null,
-              "clarificationOptions": [
-                {"label": "Option 1", "clarificationText": "clarification text", "targetChapter": "CHAPTER"}
+              "clarificationOptions": [],
+              "searchPhrases": [
+                "pain, sides, right",
+                "pain, pulsating",
+                "pain, sides, right, periodic"
               ],
-              "searchPhrases": ["phrase1", "phrase2"],
-              "keywords": ["kw1", "kw2"],
-              "rationale": "Brief rationale"
+              "keywords": ["pain", "right", "pulsating"],
+              "rationale": "Exact classical Kent rubric match for clinical symptom."
             }
         """.trimIndent()
 
@@ -968,7 +1010,8 @@ class AiRubricSuggester(
     private fun localClinicalExtraction(
         symptomText: String,
         clarification: String = "",
-        category: String = ""
+        category: String = "",
+        repertoryType: String = RepertoryRepository.REPERTORY_ORIGINAL_KENT
     ): SemanticInterpretation {
         val combined = if (clarification.isNotBlank()) "$symptomText $clarification" else symptomText
         val cleanLower = combined.lowercase()
@@ -1198,21 +1241,33 @@ class AiRubricSuggester(
             else -> {
                 val isHeadache = normLower.contains("head pain") || normLower.contains("headache") || locations.contains("head")
                 if (isHeadache) {
+                    if (normLower.contains("right")) {
+                        searchPhrases.add("pain, sides, right")
+                        keywords.add("pain")
+                        keywords.add("right")
+                    }
+                    if (normLower.contains("left")) {
+                        searchPhrases.add("pain, sides, left")
+                        keywords.add("pain")
+                        keywords.add("left")
+                    }
+                    if (normLower.contains("sun")) {
+                        searchPhrases.add("pain, sun")
+                        keywords.add("pain")
+                        keywords.add("sun")
+                    }
                     if (normLower.contains("throbbing") || normLower.contains("pulsating")) {
                         searchPhrases.add("pain, pulsating")
                         searchPhrases.add("pain, throbbing")
-                        searchPhrases.add("pulsating")
-                        searchPhrases.add("throbbing")
-                        searchPhrases.add("pain")
                         keywords.add("pulsating")
-                        keywords.add("throbbing")
                         keywords.add("pain")
-                    } else {
-                        searchPhrases.add("pain")
-                        for (mod in nonLocations) {
-                            searchPhrases.add("pain, $mod")
-                            searchPhrases.add(mod)
-                        }
+                    }
+                    searchPhrases.add("pain")
+                    keywords.add("pain")
+                    for (mod in nonLocations) {
+                        searchPhrases.add("pain, $mod")
+                        searchPhrases.add(mod)
+                        if (!keywords.contains(mod)) keywords.add(mod)
                     }
                 }
                 // 1. Generate location + sensation/modality phrases

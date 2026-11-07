@@ -90,8 +90,66 @@ interface RubricDao {
     @Query("SELECT * FROM kent_rubrics WHERE chapter IN (:chapters) ORDER BY rubricText ASC LIMIT :limit OFFSET :offset")
     suspend fun getRubricsByChapters(chapters: List<String>, limit: Int = 180, offset: Int = 0): List<RubricEntity>
 
-    @Query("SELECT * FROM kent_rubrics WHERE chapter IN (:chapters) AND rubricText LIKE '%' || :query || '%' ORDER BY rubricText ASC LIMIT :limit OFFSET :offset")
+    @Query("""
+        SELECT * FROM kent_rubrics 
+        WHERE chapter IN (:chapters) 
+        AND rubricText LIKE '%' || :query || '%'
+        ORDER BY 
+            CASE 
+                WHEN rubricText = :query THEN 1
+                WHEN rubricText LIKE :query || ', %' THEN 2
+                WHEN rubricText LIKE :query || ' - %' THEN 3
+                WHEN rubricText LIKE :query || '%' THEN 4
+                ELSE 5 
+            END ASC,
+            LENGTH(rubricText) ASC
+        LIMIT :limit OFFSET :offset
+    """)
     suspend fun searchRubricsInChapters(chapters: List<String>, query: String, limit: Int = 180, offset: Int = 0): List<RubricEntity>
+
+    @Query("""
+        SELECT * FROM kent_rubrics 
+        WHERE chapter IN (:chapters) 
+        AND rubricText LIKE '%' || :term1 || '%'
+        AND rubricText LIKE '%' || :term2 || '%'
+        ORDER BY 
+            CASE 
+                WHEN rubricText LIKE :term1 || ', %' || :term2 || '%' THEN 1
+                WHEN rubricText LIKE :term1 || '%' THEN 2
+                WHEN rubricText LIKE :term2 || '%' THEN 3
+                ELSE 4 
+            END ASC,
+            LENGTH(rubricText) ASC
+        LIMIT :limit
+    """)
+    suspend fun searchRubricsMultiInChapters(
+        chapters: List<String>,
+        term1: String,
+        term2: String,
+        limit: Int = 80
+    ): List<RubricEntity>
+
+    @Query("""
+        SELECT * FROM kent_rubrics 
+        WHERE chapter IN (:chapters) 
+        AND rubricText LIKE '%' || :term1 || '%'
+        AND rubricText LIKE '%' || :term2 || '%'
+        AND rubricText LIKE '%' || :term3 || '%'
+        ORDER BY 
+            CASE 
+                WHEN rubricText LIKE :term1 || '%' THEN 1
+                ELSE 2 
+            END ASC,
+            LENGTH(rubricText) ASC
+        LIMIT :limit
+    """)
+    suspend fun searchRubricsTripleInChapters(
+        chapters: List<String>,
+        term1: String,
+        term2: String,
+        term3: String,
+        limit: Int = 80
+    ): List<RubricEntity>
 
     @Query("SELECT COUNT(*) FROM kent_rubrics WHERE chapter IN (:chapters)")
     suspend fun getRubricCountInChapters(chapters: List<String>): Int
