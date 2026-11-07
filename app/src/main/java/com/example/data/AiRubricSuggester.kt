@@ -66,7 +66,7 @@ class AiRubricSuggester(
     private val semanticModel by lazy {
         try {
             Firebase.ai.generativeModel(
-                modelName = "gemini-3.8-flash",
+                modelName = "gemini-1.5-flash",
                 generationConfig = generationConfig {
                     responseMimeType = "application/json"
                 }
