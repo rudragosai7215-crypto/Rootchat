@@ -435,6 +435,15 @@ class RepertoryRepository(
             if (tok.length >= 3) {
                 rubricDao.searchRubricsInChapters(chapters, tok, limit = 60).forEach { candidates[it.id] = it }
             }
+            // Expand symptom synonyms (e.g. 'gas' -> 'flatulence')
+            val syns = symptomSynonyms[tok]
+            if (syns != null) {
+                for (syn in syns) {
+                    if (syn.length >= 3 && !tokens.contains(syn)) {
+                        rubricDao.searchRubricsInChapters(chapters, syn, limit = 60).forEach { candidates[it.id] = it }
+                    }
+                }
+            }
         }
 
         if (candidates.isEmpty()) return@withContext emptyList()
@@ -467,7 +476,12 @@ class RepertoryRepository(
                 var matchedTokens = 0
                 val targetWords = rubricClean.split(" ")
                 for (tok in tokens) {
-                    if (targetWords.contains(tok)) {
+                    if (tok == "gas") {
+                        // Prevent matching substring inside "hypogastrium" or "epigastrium"
+                        if (targetWords.contains("gas") || targetWords.contains("flatulence") || targetWords.contains("flatus")) {
+                            matchedTokens += 2
+                        }
+                    } else if (targetWords.contains(tok)) {
                         matchedTokens += 2
                     } else if (targetWords.any { it.contains(tok) || tok.contains(it) }) {
                         matchedTokens += 1

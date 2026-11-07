@@ -394,6 +394,24 @@ class AiRubricSuggester(
             return Pair(true, "Stool clinical match verified.")
         }
 
+        // 5b. Gas, Flatulence & Distension Guardrail
+        // Example: “abdominal gas, flatulence” must NOT return unrelated epigastrium anxiety or hypogastrium coldness
+        val isGasSymptom = sLower.contains("gas") || sLower.contains("flatulence") ||
+                sLower.contains("flatus") || sLower.contains("bloat") || sLower.contains("distension")
+        if (isGasSymptom) {
+            if (rubricChap != "ABDOMEN" && rubricChap != "STOMACH") {
+                return Pair(false, "Gas/flatulence symptom must be in ABDOMEN or STOMACH chapter, not $rubricChap")
+            }
+            val isGasRubric = rTextLower.contains("flatulence") || rTextLower.contains("flatus") ||
+                    rTextLower.contains("distension") || rTextLower.contains("rumbling") ||
+                    rTextLower.contains("fermentation") || rTextLower.startsWith("gas") ||
+                    rTextLower.contains(", gas") || rTextLower.contains(" gas ")
+            if (!isGasRubric) {
+                return Pair(false, "Symptom expresses gas/flatulence, but rubric '$rTextLower' does not represent gas/flatulence")
+            }
+            return Pair(true, "Gas/flatulence clinical match verified.")
+        }
+
         // 6. Specific Organ Location Guardrail (strictly for physical symptoms; mental symptoms are governed by MIND)
         if (!isMental) {
             val sWords = sLower.split("[^a-z0-9]+".toRegex()).filter { it.isNotBlank() }.toSet()
@@ -850,6 +868,7 @@ class AiRubricSuggester(
             - In Kent's Repertory, rubrics ALWAYS start with the core sensation/pathology, followed by comma and sub-rubric:
               - In HEAD: starts with "pain" -> e.g. "pain, sides, right", "pain, sides, left", "pain, pulsating", "pain, sun", "pain, forehead"
               - In STOMACH: desires/cravings start with "desires" -> e.g. "desires, sweets", "desires, sweets, sugar", "desires, cold drinks"; aversions start with "aversion"
+              - In ABDOMEN: gas/bloating is "flatulence", "distension" or "flatus" -> e.g. "flatulence", "distension", "flatus"
               - In MIND: fears start with "fear" -> e.g. "fear, dark", "fear, death"; traits start with "obstinate", "weeping", "anxiety"
               - In EXTREMITIES: starts with "pain" -> e.g. "pain, knee", "pain, leg"
               - In STOOL: starts with "hard", "constipation", "diarrhea"
@@ -1031,7 +1050,10 @@ class AiRubricSuggester(
             "chakkar" to "vertigo", "chakar" to "vertigo",
             "gussa" to "anger", "gusso" to "anger", "dar" to "fear", "bhay" to "fear", "chinta" to "anxiety",
             "aankh" to "eye", "aankho" to "eye", "kaan" to "ear", "naak" to "nose",
-            "pet" to "stomach", "pota" to "abdomen",
+            "pet" to "abdomen", "pota" to "abdomen", "abdominal" to "abdomen",
+            "gas" to "flatulence", "gassy" to "flatulence", "bloating" to "distension flatulence",
+            "bloated" to "distension", "afra" to "distension flatulence", "aaphra" to "distension flatulence",
+            "vayu" to "flatulence", "vaat" to "flatulence",
             "ulti" to "vomiting nausea", "chardi" to "vomiting nausea",
             "khansi" to "cough", "udhras" to "cough", "chhati" to "chest", "chhathi" to "chest",
             "guthno" to "knee", "ghutna" to "knee", "pag" to "extremities leg", "pair" to "extremities leg",
@@ -1127,6 +1149,10 @@ class AiRubricSuggester(
                       normLower.contains("constipation") || normLower.contains("diarrhea") ||
                       normLower.contains("diarrhoea")
 
+        val isGasOrFlatulence = normLower.contains("gas") || normLower.contains("flatulence") ||
+                                normLower.contains("flatus") || normLower.contains("bloat") ||
+                                normLower.contains("distension")
+
         if (isCravings) {
             // Kent's Repertory: Cravings & Aversions filed under STOMACH
             targetChapters.add("STOMACH")
@@ -1135,6 +1161,8 @@ class AiRubricSuggester(
         } else if (isStool) {
             targetChapters.add("STOOL")
             targetChapters.add("RECTUM")
+        } else if (isGasOrFlatulence) {
+            targetChapters.add("ABDOMEN")
         } else if (isMental) {
             targetChapters.add("MIND")
         } else {
@@ -1216,6 +1244,21 @@ class AiRubricSuggester(
                     for (tok in meaningfulTokens) {
                         searchPhrases.add(tok)
                         keywords.add(tok)
+                    }
+                }
+            }
+            isGasOrFlatulence -> {
+                searchPhrases.add("flatulence")
+                searchPhrases.add("distension")
+                searchPhrases.add("flatus")
+                searchPhrases.add("flatulence, stool")
+                keywords.add("flatulence")
+                keywords.add("distension")
+                keywords.add("flatus")
+                for (tok in meaningfulTokens) {
+                    if (tok != "gas" && tok != "abdominal" && tok != "abdomen" && tok != "flatulence" && tok != "distension" && tok != "flatus") {
+                        searchPhrases.add("flatulence, $tok")
+                        if (!keywords.contains(tok)) keywords.add(tok)
                     }
                 }
             }
