@@ -135,10 +135,10 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Top Row: RootChart Clinical Studio brand + Theme Toggle
+        // Top Row: RootChart Clinical Console + Status + Theme Toggle
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -150,7 +150,7 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Surface(
-                        modifier = Modifier.size(38.dp),
+                        modifier = Modifier.size(36.dp),
                         shape = RoundedCornerShape(10.dp),
                         color = TerracottaPrimary
                     ) {
@@ -159,7 +159,7 @@ fun HomeScreen(
                                 imageVector = Icons.Filled.Timeline,
                                 contentDescription = "RootChart Logo",
                                 tint = Color.White,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -168,23 +168,31 @@ fun HomeScreen(
                             text = "RootChart",
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
+                            fontSize = 19.sp,
                             color = textColor
                         )
-                        Text(
-                            text = "CLINICAL STUDIO",
-                            fontFamily = FontFamily.SansSerif,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
-                            letterSpacing = 1.8.sp,
-                            color = if (isDark) TerracottaLight else TerracottaPrimary
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(SageGreenPrimary)
+                            )
+                            Text(
+                                text = "Clinical Console • ${clinicianName.ifBlank { "Dr. Rudra" }}",
+                                fontSize = 11.sp,
+                                color = subtextColor
+                            )
+                        }
                     }
                 }
 
                 Surface(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(36.dp)
                         .clip(CircleShape)
                         .border(1.dp, if (isDark) DarkGlassBorder else LightGlassBorder, CircleShape)
                         .clickable { onToggleTheme?.invoke() },
@@ -195,96 +203,81 @@ fun HomeScreen(
                             imageVector = if (isDark) Icons.Filled.WbSunny else Icons.Filled.NightsStay,
                             contentDescription = "Toggle Theme",
                             tint = if (isDark) Color(0xFFF7D58B) else DarkBrownText,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
             }
         }
 
-        // Clinician greeting & Botanical illustration
+        // Section Title: New Consultation Protocol (Action-First)
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Welcome, ${clinicianName.ifBlank { "Rudra" }}",
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp,
-                        color = textColor
-                    )
-                    Text(
-                        text = "Homeopathy Practitioner",
-                        fontSize = 13.sp,
-                        color = subtextColor
-                    )
-                }
-
-                BotanicalLeafBranch(
-                    modifier = Modifier.size(64.dp, 44.dp),
-                    tint = if (isDark) SageGreenLight.copy(alpha = 0.6f) else SageGreenPrimary.copy(alpha = 0.5f)
-                )
-            }
+            Text(
+                text = "New Consultation",
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = textColor
+            )
         }
 
-        // Hahnemann Quote Card
-        item {
-            GlassPanel(
-                modifier = Modifier.fillMaxWidth(),
-                isDark = isDark,
-                shape = RoundedCornerShape(18.dp),
-                elevation = 4.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 14.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Spa,
-                        contentDescription = null,
-                        tint = if (isDark) SageGreenLight else SageGreenPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "\"You are not choosing homeopathy, Homeopathy is choosing you.\"",
-                        fontFamily = FontFamily.Serif,
-                        fontStyle = FontStyle.Italic,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 14.5.sp,
-                        lineHeight = 20.sp,
-                        color = textColor
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "— Dr. Samuel Hahnemann",
-                        fontFamily = FontFamily.Serif,
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 11.5.sp,
-                        color = subtextColor,
-                        modifier = Modifier.align(Alignment.End)
-                    )
-                }
-            }
-        }
-
-        // Case Counts Split (Total, Acute, Chronic)
+        // Two Refined Clinical Protocol Cards (Acute / Chronic)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Acute Protocol
+                StartCaseBigCard(
+                    title = "Acute Protocol",
+                    subtitle = "Rapid Onset • LS/MC",
+                    description = "Exciting cause, modalities & sudden keynotes.",
+                    accentColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                    isDark = isDark,
+                    icon = Icons.Filled.Bolt,
+                    testTag = "card_start_acute",
+                    onClick = onStartAcute,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Chronic Protocol
+                StartCaseBigCard(
+                    title = "Chronic Protocol",
+                    subtitle = "Constitutional & Miasm",
+                    description = "Generals, mental state & deep repertorization.",
+                    accentColor = if (isDark) SageGreenLight else SageGreenPrimary,
+                    isDark = isDark,
+                    icon = Icons.Filled.Spa,
+                    testTag = "card_start_chronic",
+                    onClick = onStartChronic,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Section Title: Clinical Overview Metrics
+        item {
+            Text(
+                text = "Clinical Overview",
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = textColor
+            )
+        }
+
+        // Case Counts Split (Total, Acute, Chronic) - Quiet Metrics
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 // Total Cases Card
                 StatPill(
-                    label = "Total Cases",
+                    label = "Total Consults",
                     count = totalCases,
                     icon = Icons.Outlined.Description,
-                    iconColor = if (isDark) SageGreenLight else SageGreenPrimary,
+                    iconColor = textColor,
                     isDark = isDark,
                     modifier = Modifier.weight(1f)
                 )
@@ -293,7 +286,7 @@ fun HomeScreen(
                 StatPill(
                     label = "Acute Cases",
                     count = acuteCases,
-                    icon = Icons.Filled.LocalFireDepartment,
+                    icon = Icons.Filled.MedicalServices,
                     iconColor = if (isDark) TerracottaLight else TerracottaPrimary,
                     isDark = isDark,
                     modifier = Modifier.weight(1f)
@@ -311,89 +304,25 @@ fun HomeScreen(
             }
         }
 
-        // Section Title: Start New Clinical Protocol
+        // Clinical Workspace Modules (Clean 2x2 Grid)
         item {
-            Text(
-                text = "Start New Clinical Protocol",
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-                color = textColor
-            )
-        }
-
-        // Two Large "Start New Case" Cards (Acute / Chronic)
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Acute Card
-                StartCaseBigCard(
-                    title = "Acute Case",
-                    description = "Exciting course, LS/MC, rapid & short duration.",
-                    containerColor = if (isDark) Color(0xFF9E4429) else Color(0xFFB5502F),
-                    icon = Icons.Filled.Bolt,
-                    testTag = "card_start_acute",
-                    onClick = onStartAcute,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Chronic Card
-                StartCaseBigCard(
-                    title = "Chronic Case",
-                    description = "Miasm, constitutional, past/family history.",
-                    containerColor = if (isDark) Color(0xFF385341) else Color(0xFF4A6B56),
-                    icon = Icons.Filled.Spa,
-                    testTag = "card_start_chronic",
-                    onClick = onStartChronic,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        // Clinical Workspace Modules
-        item {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "CLINICAL WORKSPACE",
+                    text = "Workspace Modules",
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    letterSpacing = 1.8.sp,
-                    color = if (isDark) TerracottaLight else TerracottaPrimary
+                    fontSize = 14.sp,
+                    color = textColor
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    WorkspaceQuickPill(
-                        title = "Case Library",
-                        subtitle = "${caseList.size} cases",
-                        icon = Icons.Filled.MedicalServices,
-                        accentColor = textColor,
-                        isDark = isDark,
-                        modifier = Modifier.weight(1f),
-                        onClick = onViewAllLibrary
-                    )
-
-                    if (onNavigateToReports != null) {
-                        WorkspaceQuickPill(
-                            title = "Analytics",
-                            subtitle = "Reports",
-                            icon = Icons.Filled.Analytics,
-                            accentColor = if (isDark) TerracottaLight else TerracottaPrimary,
-                            isDark = isDark,
-                            modifier = Modifier.weight(1f),
-                            onClick = onNavigateToReports
-                        )
-                    }
-
                     if (onNavigateToMateriaMedica != null) {
                         WorkspaceQuickPill(
                             title = "Materia Medica",
-                            subtitle = "Browse / Boericke",
+                            subtitle = "Boericke Reference",
                             icon = Icons.Filled.AutoStories,
                             accentColor = if (isDark) SageGreenLight else SageGreenPrimary,
                             isDark = isDark,
@@ -402,10 +331,37 @@ fun HomeScreen(
                         )
                     }
 
+                    WorkspaceQuickPill(
+                        title = "Case Library",
+                        subtitle = "${caseList.size} Active Records",
+                        icon = Icons.Filled.MedicalServices,
+                        accentColor = if (isDark) TerracottaLight else TerracottaPrimary,
+                        isDark = isDark,
+                        modifier = Modifier.weight(1f),
+                        onClick = onViewAllLibrary
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (onNavigateToReports != null) {
+                        WorkspaceQuickPill(
+                            title = "Analytics",
+                            subtitle = "Clinical Reports",
+                            icon = Icons.Filled.Analytics,
+                            accentColor = if (isDark) SageGreenLight else SageGreenPrimary,
+                            isDark = isDark,
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToReports
+                        )
+                    }
+
                     if (onNavigateToProfile != null) {
                         WorkspaceQuickPill(
                             title = "Profile",
-                            subtitle = "Settings",
+                            subtitle = "Settings & Clinic",
                             icon = Icons.Filled.AccountCircle,
                             accentColor = textColor,
                             isDark = isDark,
@@ -426,12 +382,11 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "CASE LIBRARY",
+                        text = "Recent Consultations",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        letterSpacing = 1.8.sp,
-                        color = if (isDark) TerracottaLight else TerracottaPrimary
+                        fontSize = 14.sp,
+                        color = textColor
                     )
 
                     if (caseList.isNotEmpty()) {
@@ -531,6 +486,25 @@ fun HomeScreen(
                     caseEntity = item,
                     isDark = isDark,
                     onClick = { onOpenCase(item.id) }
+                )
+            }
+        }
+
+        // Hahnemann Clinical Footnote (Subtle & Dignified)
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "\"Homeopathy is choosing you.\" — Dr. Samuel Hahnemann",
+                    fontFamily = FontFamily.Serif,
+                    fontStyle = FontStyle.Italic,
+                    fontSize = 11.sp,
+                    color = subtextColor.copy(alpha = 0.75f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
         }
@@ -634,81 +608,108 @@ private fun StatPill(
 @Composable
 private fun StartCaseBigCard(
     title: String,
+    subtitle: String,
     description: String,
-    containerColor: Color,
+    accentColor: Color,
+    isDark: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     testTag: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val borderColor = accentColor.copy(alpha = if (isDark) 0.35f else 0.25f)
+    val surfaceColor = if (isDark) Color(0xFF1B201E) else Color(0xFFF9F7F4)
+    val textColor = if (isDark) CreamIvoryText else DarkBrownText
+    val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
+
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .testTag(testTag),
-        color = containerColor,
-        shape = RoundedCornerShape(20.dp),
-        shadowElevation = 4.dp
+        color = surfaceColor,
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 2.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x30FFFFFF)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = title,
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-                color = Color.White
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(accentColor)
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = description,
-                fontSize = 10.5.sp,
-                lineHeight = 14.5.sp,
-                color = Color.White.copy(alpha = 0.85f),
-                maxLines = 2
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(accentColor.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Text(
+                        text = title,
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = textColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Text(
-                    text = "Start Protocol",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    color = Color.White
+                    text = subtitle,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    color = accentColor
                 )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(13.dp)
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = description,
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp,
+                    color = subtextColor,
+                    maxLines = 2
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Start Protocol",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.sp,
+                        color = accentColor
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
         }
     }
@@ -809,54 +810,52 @@ private fun WorkspaceQuickPill(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    GlassPanel(
-        modifier = modifier,
-        isDark = isDark,
-        shape = RoundedCornerShape(14.dp),
-        onClick = onClick
+    val borderColor = if (isDark) DarkGlassBorder else LightGlassBorder
+    val surfaceColor = if (isDark) DarkGlassSurface else LightGlassSurface
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        color = surfaceColor,
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(30.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.12f)),
+                    .background(accentColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(15.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = title,
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.5.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                color = if (isDark) CreamIvoryText else DarkBrownText,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(1.dp))
-            Text(
-                text = subtitle,
-                fontSize = 9.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                color = if (isDark) CreamIvoryMuted else DarkBrownMuted,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    color = if (isDark) CreamIvoryText else DarkBrownText,
+                    maxLines = 1
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 9.5.sp,
+                    color = if (isDark) CreamIvoryMuted else DarkBrownMuted,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
