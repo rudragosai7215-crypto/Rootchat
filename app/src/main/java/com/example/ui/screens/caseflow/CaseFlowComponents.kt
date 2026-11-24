@@ -145,6 +145,7 @@ fun String.toClinicalTitle(): String {
     }
 }
 
+@Composable
 fun ClinicalTextField(
     label: String,
     value: String,
