@@ -81,25 +81,23 @@ fun ReportsScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Title
         item {
             Column {
                 Text(
-                    text = "CLINICAL ANALYTICS",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
-                    letterSpacing = 2.sp,
+                    text = "Clinical Analytics",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isDark) TerracottaLight else TerracottaPrimary
                 )
                 Text(
                     text = "Practice Reports",
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     color = textColor
                 )
                 Text(
@@ -113,20 +111,19 @@ fun ReportsScreen(
 
         // Case Distribution Card
         item {
-            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
-                Column(modifier = Modifier.padding(18.dp)) {
+            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark, shape = RoundedCornerShape(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "CASE RATIO DISTRIBUTION",
+                        text = "Case Ratio Distribution",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        letterSpacing = 1.4.sp,
-                        color = if (isDark) TerracottaLight else TerracottaPrimary
+                        fontSize = 13.sp,
+                        color = textColor
                     )
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     if (totalCases == 0) {
-                        Text("No cases recorded yet to compute ratios.", fontSize = 12.5.sp, color = subtextColor)
+                        Text("No cases recorded yet to compute ratios.", fontSize = 12.sp, color = subtextColor)
                     } else {
                         val acutePct = (acuteCases.toFloat() / totalCases * 100).toInt()
                         val chronicPct = 100 - acutePct
@@ -135,8 +132,8 @@ fun ReportsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Acute Protocols: $acuteCases ($acutePct%)", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = if (isDark) TerracottaLight else TerracottaPrimary)
-                            Text("Chronic Protocols: $chronicCases ($chronicPct%)", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = if (isDark) SageGreenLight else SageGreenPrimary)
+                            Text("Acute Protocols: $acuteCases ($acutePct%)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isDark) TerracottaLight else TerracottaPrimary)
+                            Text("Chronic Protocols: $chronicCases ($chronicPct%)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (isDark) SageGreenLight else SageGreenPrimary)
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -145,8 +142,8 @@ fun ReportsScreen(
                             progress = { if (totalCases > 0) acuteCases.toFloat() / totalCases else 0f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
                             color = TerracottaPrimary,
                             trackColor = SageGreenPrimary
                         )
@@ -157,38 +154,37 @@ fun ReportsScreen(
 
         // Top Prescribed Remedies
         item {
-            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
-                Column(modifier = Modifier.padding(18.dp)) {
+            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark, shape = RoundedCornerShape(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "MOST PRESCRIBED SIMILIMUMS",
+                        text = "Most Prescribed Similimums",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        letterSpacing = 1.4.sp,
-                        color = if (isDark) TerracottaLight else TerracottaPrimary
+                        fontSize = 13.sp,
+                        color = textColor
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     if (topRemedies.isEmpty()) {
-                        Text("Prescribe remedies in the protocol flow to see frequency rankings.", fontSize = 12.5.sp, color = subtextColor)
+                        Text("Prescribe remedies in the protocol flow to see frequency rankings.", fontSize = 12.sp, color = subtextColor)
                     } else {
                         val maxCount = topRemedies.maxOfOrNull { it.second } ?: 1
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             topRemedies.forEach { (remedy, count) ->
                                 Column {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(remedy, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = textColor)
-                                        Text("$count ${if (count == 1) "case" else "cases"}", fontSize = 12.sp, color = subtextColor)
+                                        Text(remedy, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = textColor)
+                                        Text("$count ${if (count == 1) "case" else "cases"}", fontSize = 11.sp, color = subtextColor)
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(3.dp))
                                     LinearProgressIndicator(
                                         progress = { count.toFloat() / maxCount },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(6.dp)
+                                            .height(5.dp)
                                             .clip(RoundedCornerShape(3.dp)),
                                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                                         trackColor = if (isDark) Color(0x33FFFFFF) else Color(0x22000000)
@@ -203,20 +199,19 @@ fun ReportsScreen(
 
         // Potency Distribution
         item {
-            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
-                Column(modifier = Modifier.padding(18.dp)) {
+            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark, shape = RoundedCornerShape(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "POTENCY PREFERENCES",
+                        text = "Potency Preferences",
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        letterSpacing = 1.4.sp,
-                        color = if (isDark) TerracottaLight else TerracottaPrimary
+                        fontSize = 13.sp,
+                        color = textColor
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     if (topPotencies.isEmpty()) {
-                        Text("Potency distribution will populate as prescriptions are written.", fontSize = 12.5.sp, color = subtextColor)
+                        Text("Potency distribution will populate as prescriptions are written.", fontSize = 12.sp, color = subtextColor)
                     } else {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -226,13 +221,13 @@ fun ReportsScreen(
                             topPotencies.forEach { (potency, count) ->
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(RoundedCornerShape(8.dp))
                                         .background(if (isDark) Color(0x22FFFFFF) else Color(0x15000000))
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(potency, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textColor)
+                                        Text(potency, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = textColor)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text("$count", fontSize = 11.sp, color = if (isDark) TerracottaLight else TerracottaPrimary)
                                     }

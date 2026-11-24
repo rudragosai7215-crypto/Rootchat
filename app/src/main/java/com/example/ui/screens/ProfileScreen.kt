@@ -102,25 +102,23 @@ fun ProfileScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Title
         item {
             Column {
                 Text(
-                    text = "CLINICIAN SETTINGS",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
-                    letterSpacing = 2.sp,
+                    text = "Clinician Settings",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isDark) TerracottaLight else TerracottaPrimary
                 )
                 Text(
                     text = "Practitioner Profile",
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     color = textColor
                 )
             }
@@ -128,8 +126,8 @@ fun ProfileScreen(
 
         // Profile Info Card
         item {
-            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
-                Column(modifier = Modifier.padding(18.dp)) {
+            GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark, shape = RoundedCornerShape(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically

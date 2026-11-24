@@ -178,25 +178,23 @@ fun CaseLibraryScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Library Title Header
         item {
             Column {
                 Text(
-                    text = "CLINICAL RECORDS",
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
-                    letterSpacing = 2.sp,
+                    text = "Clinical Records",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isDark) TerracottaLight else TerracottaPrimary
                 )
                 Text(
                     text = "Case Library",
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     color = textColor
                 )
                 Text(
@@ -229,7 +227,7 @@ fun CaseLibraryScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = TerracottaPrimary,
                     unfocusedBorderColor = inputBorderColor,
@@ -397,14 +395,14 @@ private fun LibraryCaseCard(
     GlassPanel(
         modifier = Modifier.fillMaxWidth(),
         isDark = isDark,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
         onClick = onOpen
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Top Row: Avatar + Patient Name + Badges + Actions
             Row(
@@ -420,7 +418,7 @@ private fun LibraryCaseCard(
                     // Patient Initials Avatar Circle
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(
                                 if (isAcute) {
@@ -441,7 +439,7 @@ private fun LibraryCaseCard(
                             text = patientInitial,
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             color = if (isAcute) (if (isDark) TerracottaLight else TerracottaPrimary)
                             else (if (isDark) Color(0xFF88B097) else Color(0xFF385542))
                         )

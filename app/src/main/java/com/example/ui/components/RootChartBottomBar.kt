@@ -76,17 +76,17 @@ fun RootChartBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Main floating glass pill
+        // Main quiet clinical bar
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .shadow(12.dp, RoundedCornerShape(26.dp))
-                .clip(RoundedCornerShape(26.dp))
-                .border(1.dp, barBorder, RoundedCornerShape(26.dp)),
+                .height(60.dp)
+                .shadow(4.dp, RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .border(1.dp, barBorder, RoundedCornerShape(20.dp)),
             color = barBg
         ) {
             Row(
@@ -116,8 +116,8 @@ fun RootChartBottomBar(
                     onClick = { onTabSelected(NavTab.LIBRARY) }
                 )
 
-                // Space for raised center button
-                Spacer(modifier = Modifier.size(52.dp))
+                // Space for centered button
+                Spacer(modifier = Modifier.size(48.dp))
 
                 BottomNavItem(
                     label = "Materia",
@@ -143,15 +143,15 @@ fun RootChartBottomBar(
             }
         }
 
-        // Central Raised "+" New Case Button
+        // Central "+" New Case Action Button (Quiet hairline, zero glow)
         Box(
             modifier = Modifier
-                .offset(y = (-14).dp)
-                .size(56.dp)
-                .shadow(14.dp, CircleShape)
+                .offset(y = (-10).dp)
+                .size(50.dp)
+                .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
                 .background(TerracottaPrimary)
-                .border(2.dp, Color(0x66FFFFFF), CircleShape)
+                .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color(0x22000000), CircleShape)
                 .clickable { onNewCaseClicked() }
                 .testTag("new_case_fab"),
             contentAlignment = Alignment.Center
@@ -160,7 +160,7 @@ fun RootChartBottomBar(
                 imageVector = Icons.Filled.Add,
                 contentDescription = "Start New Case",
                 tint = Color.White,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -180,7 +180,7 @@ private fun BottomNavItem(
     Column(
         modifier = Modifier
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .testTag(testTag),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -189,13 +189,14 @@ private fun BottomNavItem(
             imageVector = if (selected) iconSelected else iconUnselected,
             contentDescription = label,
             tint = if (selected) activeColor else inactiveColor,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
             color = if (selected) activeColor else inactiveColor,
-            fontSize = 10.5.sp,
+            fontSize = 10.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             style = MaterialTheme.typography.labelSmall
         )
     }

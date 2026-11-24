@@ -113,16 +113,14 @@ fun EntryScreen(
                 text = "RootChart",
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
-                fontSize = 32.sp,
+                fontSize = 30.sp,
                 color = textColor
             )
 
             Text(
-                text = "CLINICAL REPERTORIZATION STUDIO",
-                fontFamily = FontFamily.Serif,
+                text = "Clinical Repertorization Studio",
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 11.sp,
-                letterSpacing = 2.sp,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
@@ -134,17 +132,18 @@ fun EntryScreen(
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Glass Profile Setup Card
             GlassPanel(
                 modifier = Modifier.fillMaxWidth(),
-                isDark = isDark
+                isDark = isDark,
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp)
+                        .padding(20.dp)
                 ) {
                     Text(
                         text = "Clinician Registration",
@@ -155,19 +154,17 @@ fun EntryScreen(
                     )
                     Text(
                         text = "Set up your local offline profile to sign clinical case records.",
-                        fontSize = 12.5.sp,
+                        fontSize = 12.sp,
                         color = subtextColor,
                         modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
                     )
 
                     if (knownClinicians.isNotEmpty()) {
                         Text(
-                            text = "RETURNING PRACTITIONER (RESUME CASES)",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.1.sp,
-                            color = if (isDark) SageGreenLight else SageGreenPrimary,
-                            fontFamily = FontFamily.Serif
+                            text = "Returning Practitioner",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isDark) SageGreenLight else SageGreenPrimary
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(

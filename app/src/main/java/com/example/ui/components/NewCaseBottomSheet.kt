@@ -69,39 +69,36 @@ fun NewCaseBottomSheet(
         sheetState = sheetState,
         containerColor = sheetBg,
         scrimColor = Color(0x66000000),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 36.dp, top = 8.dp)
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp, top = 6.dp)
         ) {
             Text(
-                text = "INITIATE CLINICAL PROTOCOL",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.6.sp,
-                color = if (isDark) TerracottaLight else TerracottaPrimary,
-                fontFamily = FontFamily.Serif
+                text = "Initiate Clinical Protocol",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isDark) TerracottaLight else TerracottaPrimary
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "Select Protocol Type",
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Serif,
                 color = textColor
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Acute Protocol Card
             ProtocolCard(
-                title = "Acute Case Protocol",
+                title = "Acute Protocol",
                 badge = "ACUTE",
-                description = "Rapid totality, LSMC particular modalities, exciting cause & fast similimum selection.",
+                description = "Rapid totality, LS/MC particular modalities, exciting cause & sudden keynotes.",
                 accentColor = if (isDark) TerracottaLight else TerracottaPrimary,
-                containerColor = TerracottaContainer,
                 icon = Icons.Filled.FlashOn,
                 isDark = isDark,
                 testTag = "btn_start_acute_protocol",
@@ -111,15 +108,14 @@ fun NewCaseBottomSheet(
                 }
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Chronic Protocol Card
             ProtocolCard(
-                title = "Chronic Case Protocol",
+                title = "Chronic Protocol",
                 badge = "CHRONIC",
-                description = "Comprehensive Hahnemannian case: miasmatic evaluation, past/family history, constitutional similimum.",
+                description = "Comprehensive Hahnemannian case: miasmatic inquiry, past/family history & constitutional similimum.",
                 accentColor = if (isDark) SageGreenLight else SageGreenPrimary,
-                containerColor = SageGreenContainer,
                 icon = Icons.Filled.Spa,
                 isDark = isDark,
                 testTag = "btn_start_chronic_protocol",
@@ -138,90 +134,99 @@ private fun ProtocolCard(
     badge: String,
     description: String,
     accentColor: Color,
-    containerColor: Color,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isDark: Boolean,
     testTag: String,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isDark) DarkGlassBorder else LightGlassBorder
+    val borderColor = accentColor.copy(alpha = if (isDark) 0.35f else 0.25f)
+    val surfaceColor = if (isDark) Color(0xFF1B201E) else Color(0xFFF9F7F4)
     val textColor = if (isDark) CreamIvoryText else DarkBrownText
     val subtextColor = if (isDark) CreamIvoryMuted else DarkBrownMuted
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .testTag(testTag),
-        color = containerColor.copy(alpha = 0.35f),
-        shape = RoundedCornerShape(20.dp)
+        color = surfaceColor,
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 2.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, accentColor.copy(alpha = 0.6f), CircleShape),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(accentColor)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = title,
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = textColor
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
                     )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = badge,
-                            fontSize = 9.sp,
+                            text = title,
+                            fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold,
-                            color = accentColor
+                            fontSize = 15.sp,
+                            color = textColor
                         )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = badge,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accentColor
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = description,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        color = subtextColor
+                    )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = description,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    color = subtextColor
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(16.dp)
                 )
             }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }
