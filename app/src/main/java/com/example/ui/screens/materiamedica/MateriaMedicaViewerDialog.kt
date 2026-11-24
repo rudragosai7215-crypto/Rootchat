@@ -581,11 +581,10 @@ fun MateriaMedicaViewerDialog(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = sec.section.uppercase(),
+                                            text = sec.section.lowercase().replaceFirstChar { it.uppercase() },
                                             fontFamily = FontFamily.Serif,
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.SemiBold,
                                             fontSize = 12.sp,
-                                            letterSpacing = 1.sp,
                                             color = if (isDark) TerracottaLight else TerracottaPrimary
                                         )
 
@@ -601,9 +600,9 @@ fun MateriaMedicaViewerDialog(
                                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                                 ) {
                                                     Text(
-                                                        text = "$exactMatchCount EXACT PHRASE${if (exactMatchCount > 1) "S" else ""}",
+                                                        text = "$exactMatchCount exact match${if (exactMatchCount > 1) "es" else ""}",
                                                         fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Black,
+                                                        fontWeight = FontWeight.SemiBold,
                                                         color = if (isDark) Color(0xFFFFE082) else Color(0xFFBF360C)
                                                     )
                                                 }
@@ -616,9 +615,9 @@ fun MateriaMedicaViewerDialog(
                                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                                 ) {
                                                     Text(
-                                                        text = "$wordMatchCount WORD${if (wordMatchCount > 1) "S" else ""}",
+                                                        text = "$wordMatchCount word match${if (wordMatchCount > 1) "es" else ""}",
                                                         fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
+                                                        fontWeight = FontWeight.Medium,
                                                         color = if (isDark) Color(0xFFFFD54F) else Color(0xFF8A4700)
                                                     )
                                                 }

@@ -107,17 +107,16 @@ fun RepertorySelectionStep(
                 }
                 Column {
                     Text(
-                        text = "REPERTORY SPECIFICATION",
+                        text = "Repertory specification",
                         fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 11.5.sp,
-                        letterSpacing = 1.3.sp,
                         color = accentColor
                     )
                     Text(
                         text = "Selection of Repertory",
                         fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp,
                         color = textColor
                     )
@@ -134,7 +133,7 @@ fun RepertorySelectionStep(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .border(
-                        width = if (isOriginalSelected) 2.dp else 1.dp,
+                        width = 1.dp,
                         color = if (isOriginalSelected) accentColor else borderColor,
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -151,7 +150,7 @@ fun RepertorySelectionStep(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 18.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -169,27 +168,27 @@ fun RepertorySelectionStep(
                                 selectedColor = accentColor,
                                 unselectedColor = subtextColor
                             ),
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = "Original Kent Repertory",
                             fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
                             color = textColor
                         )
                     }
 
                     if (isOriginalSelected) {
                         Surface(
-                            color = accentColor,
+                            color = accentColor.copy(alpha = 0.15f),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "SELECTED",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                text = "Selected",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accentColor,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
@@ -205,7 +204,7 @@ fun RepertorySelectionStep(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .border(
-                        width = if (isExtendedSelected) 2.dp else 1.dp,
+                        width = 1.dp,
                         color = if (isExtendedSelected) accentColor else borderColor,
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -222,7 +221,7 @@ fun RepertorySelectionStep(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 18.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -240,27 +239,27 @@ fun RepertorySelectionStep(
                                 selectedColor = accentColor,
                                 unselectedColor = subtextColor
                             ),
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = "Extended Kent Repertory",
                             fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
                             color = textColor
                         )
                     }
 
                     if (isExtendedSelected) {
                         Surface(
-                            color = accentColor,
+                            color = accentColor.copy(alpha = 0.15f),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "SELECTED",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                text = "Selected",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accentColor,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }

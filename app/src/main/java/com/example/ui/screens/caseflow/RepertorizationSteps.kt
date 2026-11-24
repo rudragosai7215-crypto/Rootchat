@@ -228,11 +228,10 @@ fun TotalityOfSymptomsStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "TOTALITY OF SYMPTOMS",
+                text = "Totality of symptoms",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
             Text(
@@ -242,7 +241,7 @@ fun TotalityOfSymptomsStep(
             )
 
             ClinicalTextField(
-                label = "NUMBERED TOTALITY SYNTHESIS *",
+                label = "Numbered totality synthesis *",
                 value = formData.totalityNotes,
                 onValueChange = { onUpdateForm(formData.copy(totalityNotes = it)) },
                 placeholder = "1. Characteristic mental generals...\n2. Physical generals & modalities...\n3. Characteristic particular symptoms...",
@@ -267,11 +266,10 @@ fun TotalityOfSymptomsStep(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = if (isDark) TerracottaLight else TerracottaPrimary, modifier = Modifier.size(16.dp))
                             Text(
-                                text = "LIVE RUBRIC SUGGESTIONS (TAP TO ADD TO REPERTORY)",
+                                text = "Suggested rubrics from totality (tap to add)",
                                 fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.5.sp,
                                 color = if (isDark) TerracottaLight else TerracottaPrimary
                             )
                         }
@@ -1107,14 +1105,13 @@ fun RepertorizationStep(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (repertoryType == RepertoryRepository.REPERTORY_ORIGINAL_KENT) {
-                                "HOMOEOPATHIC REPERTORY · ORIGINAL KENT (1897)"
+                                "Homoeopathic Repertory · Original Kent (1897)"
                             } else {
-                                "HOMOEOPATHIC REPERTORY · EXTENDED KENT"
+                                "Homoeopathic Repertory · Extended Kent"
                             },
                             fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
-                            letterSpacing = 1.4.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
                             color = if (isDark) TerracottaLight else TerracottaPrimary
                         )
                         Text(
@@ -1162,10 +1159,9 @@ fun RepertorizationStep(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = "TOTALITY",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp,
+                                    text = "Totality rubrics",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = if (isDark) TerracottaLight else TerracottaPrimary,
                                     fontFamily = FontFamily.Serif
                                 )
@@ -2897,21 +2893,19 @@ fun PrescriptionStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = if (isAcute) "SELECTION OF ACUTE SIMILIMUM" else "SELECTION OF CONSTITUTIONAL SIMILIMUM",
+                text = if (isAcute) "Selection of acute similimum" else "Selection of constitutional similimum",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
             // Top-3 quick-select chips
             if (top3.isNotEmpty()) {
                 Text(
-                    text = "TOP-3 REPERTORIZED CANDIDATES (TAP TO QUICK-SELECT)",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    text = "Top repertorized candidates (tap to select)",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = subtextColor,
                     fontFamily = FontFamily.Serif
                 )
@@ -2977,10 +2971,9 @@ fun PrescriptionStep(
 
             // Potency Quick Chips
             Text(
-                text = "POTENCY QUICK SELECT",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
+                text = "Potency quick select",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = subtextColor,
                 fontFamily = FontFamily.Serif
             )
@@ -3063,7 +3056,7 @@ fun ManagementStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ClinicalTextField(
-                label = "MANAGEMENT (ADVICES, DIET & AUXILIARY MEASURES) *",
+                label = "Management (Advices, diet & auxiliary measures) *",
                 value = formData.managementAdvices,
                 onValueChange = { onUpdateForm(formData.copy(managementAdvices = it)) },
                 placeholder = "Dietary guidelines, posture, rest, hydration, avoidance of allergens/cold drafts, exercise regimen, and auxiliary supportive care...",
@@ -3087,7 +3080,7 @@ fun FollowUpStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ClinicalTextField(
-                label = "SCHEDULED FOLLOW-UP DATE",
+                label = "Scheduled follow-up date",
                 value = formData.followUpDate,
                 onValueChange = { onUpdateForm(formData.copy(followUpDate = it)) },
                 placeholder = "e.g. In 7 days / In 14 days / In 1 month",
@@ -3096,7 +3089,7 @@ fun FollowUpStep(
             )
 
             ClinicalTextField(
-                label = "CURRENT SYMPTOMS AT FOLLOW-UP",
+                label = "Current symptoms at follow-up",
                 value = formData.followUpCurrentSymptoms,
                 onValueChange = { onUpdateForm(formData.copy(followUpCurrentSymptoms = it)) },
                 placeholder = "Record status of presenting symptoms, new complaints, or sensations...",
@@ -3106,7 +3099,7 @@ fun FollowUpStep(
             )
 
             ClinicalTextField(
-                label = "IMPROVEMENT STATUS (HAHNEMANNIAN PROGNOSIS & HERING'S LAW)",
+                label = "Improvement status (Hahnemannian prognosis & Hering's law)",
                 value = formData.followUpImprovementStatus,
                 onValueChange = { onUpdateForm(formData.copy(followUpImprovementStatus = it)) },
                 placeholder = "Assess improvement: General well-being, energy, sleep, appetite; Direction of cure (from above downwards, within outwards, more important to less important organs); Homeopathic aggravation vs disease aggravation...",
@@ -3116,7 +3109,7 @@ fun FollowUpStep(
             )
 
             ClinicalTextField(
-                label = "NEXT PRESCRIPTION (SAC LAC / PLACEBO / REPEAT / SECOND SIMILIMUM)",
+                label = "Next prescription (Placebo / Repeat / Second similimum)",
                 value = formData.followUpNextPrescription,
                 onValueChange = { onUpdateForm(formData.copy(followUpNextPrescription = it)) },
                 placeholder = "e.g. Placebo / Sac Lac 30 daily morning; Wait and watch; Or repeat remedy in water potencies if improvement ceases...",

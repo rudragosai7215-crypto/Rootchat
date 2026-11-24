@@ -127,6 +127,24 @@ import com.example.ui.theme.TerracottaPrimary
 import kotlinx.coroutines.launch
 
 @Composable
+fun String.toClinicalTitle(): String {
+    if (this.isBlank()) return this
+    val letters = this.filter { it.isLetter() }
+    if (letters.any { it.isLowerCase() }) return this
+    val acronyms = setOf("OPD", "IPD", "O.D.P.", "G.P.E.", "GPE", "CBC", "ESR", "RBS", "LFT", "KFT", "USG", "MRI", "CT", "LSMC", "CVS", "CNS", "RS", "BP", "LMP", "DM", "MI", "HIV", "TB", "ENT", "P/A", "NO")
+    return this.split(" ").joinToString(" ") { word ->
+        val clean = word.trim('(', ')', ',', ':', '*', '#', '<', '>', '/')
+        if (clean.uppercase() in acronyms || clean.contains('.')) {
+            word
+        } else if (word.startsWith("(") && word.endsWith(")")) {
+            val inner = word.substring(1, word.length - 1)
+            "(${inner.lowercase().replaceFirstChar { it.uppercase() }})"
+        } else {
+            word.lowercase().replaceFirstChar { it.uppercase() }
+        }
+    }
+}
+
 fun ClinicalTextField(
     label: String,
     value: String,
@@ -143,12 +161,11 @@ fun ClinicalTextField(
 
     Column(modifier = modifier) {
         Text(
-            text = label,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
+            text = label.toClinicalTitle(),
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.SemiBold,
             color = if (isDark) TerracottaLight else TerracottaPrimary,
-            fontFamily = FontFamily.Serif
+            fontFamily = FontFamily.Default
         )
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(
@@ -158,7 +175,7 @@ fun ClinicalTextField(
             singleLine = minLines == 1,
             minLines = minLines,
             readOnly = readOnly,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = TerracottaPrimary,
                 unfocusedBorderColor = inputBorderColor,
@@ -191,12 +208,11 @@ fun ClinicalDropdown(
 
     Column(modifier = modifier) {
         Text(
-            text = label,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
+            text = label.toClinicalTitle(),
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.SemiBold,
             color = if (isDark) TerracottaLight else TerracottaPrimary,
-            fontFamily = FontFamily.Serif
+            fontFamily = FontFamily.Default
         )
         Spacer(modifier = Modifier.height(4.dp))
         ExposedDropdownMenuBox(
@@ -210,7 +226,7 @@ fun ClinicalDropdown(
                 singleLine = true,
                 maxLines = 1,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = TerracottaPrimary,
@@ -347,7 +363,7 @@ fun RubricDetailDialog(
                 .fillMaxWidth(0.94f)
                 .heightIn(max = 580.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .border(2.dp, tomeBorderColor, RoundedCornerShape(16.dp)),
+                .border(1.dp, tomeBorderColor, RoundedCornerShape(16.dp)),
             color = tomeBgColor
         ) {
             Column(
@@ -365,10 +381,10 @@ fun RubricDetailDialog(
                         // Part 15: Breadcrumbs (Chapter > Rubric > Sub-rubric > Medicines > Totality)
                         val cleanRubric = rubricText.split(',').firstOrNull()?.trim() ?: rubricText
                         Text(
-                            text = "${chapter.uppercase()} > $cleanRubric > Medicines > Totality",
+                            text = "${chapter.toClinicalTitle()} > $cleanRubric > Medicines",
                             fontFamily = FontFamily.Serif,
                             fontSize = 10.sp,
-                            letterSpacing = 0.5.sp,
+                            letterSpacing = 0.2.sp,
                             color = goldAccent.copy(alpha = 0.85f),
                             maxLines = 1,
                             modifier = Modifier.padding(bottom = 3.dp)
@@ -379,11 +395,10 @@ fun RubricDetailDialog(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "❖ SECTION · ${chapter.uppercase()}",
+                                text = "Chapter · ${chapter.toClinicalTitle()}",
                                 fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
-                                letterSpacing = 1.4.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
                                 color = goldAccent
                             )
                         }
@@ -417,24 +432,22 @@ fun RubricDetailDialog(
                     }
                 }
 
-                // Classical Filigree Divider
+                // Clinical Divider
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(tomeBorderColor.copy(alpha = 0.5f)))
+                    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(tomeBorderColor.copy(alpha = 0.5f)))
                     Surface(
                         color = tomeBgColor,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         Text(
-                            text = "❦ MATERIA MEDICA GRADES ❦",
-                            fontSize = 9.sp,
-                            letterSpacing = 1.5.sp,
+                            text = "Materia Medica Grades",
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Serif,
                             color = goldAccent
                         )
                     }
@@ -521,12 +534,11 @@ fun RubricDetailDialog(
                         item {
                             Column {
                                 Text(
-                                    text = "✦ GRADE 3 · CHARACTERISTIC THREE-MARK (3 PTS):",
-                                    fontSize = 10.5.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    text = "Grade 3 · Characteristic (3 points):",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontFamily = FontFamily.Serif,
-                                    color = Color(0xFFC0392B),
-                                    letterSpacing = 1.sp
+                                    color = Color(0xFFC0392B)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 FlowRow(
@@ -561,12 +573,11 @@ fun RubricDetailDialog(
                         item {
                             Column {
                                 Text(
-                                    text = "✦ GRADE 2 · PROVEN TWO-MARK (2 PTS):",
-                                    fontSize = 10.5.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    text = "Grade 2 · Proven (2 points):",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontFamily = FontFamily.Serif,
-                                    color = Color(0xFF386641),
-                                    letterSpacing = 1.sp
+                                    color = Color(0xFF386641)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 FlowRow(
@@ -602,12 +613,11 @@ fun RubricDetailDialog(
                         item {
                             Column {
                                 Text(
-                                    text = "✦ GRADE 1 · CLINICAL ONE-MARK (1 PT):",
-                                    fontSize = 10.5.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    text = "Grade 1 · Clinical (1 point):",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontFamily = FontFamily.Serif,
-                                    color = subtextColor,
-                                    letterSpacing = 1.sp
+                                    color = subtextColor
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 FlowRow(
@@ -844,8 +854,8 @@ fun RepertoryBrowseDialog(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
                 .fillMaxHeight(0.92f)
-                .clip(RoundedCornerShape(18.dp))
-                .border(2.dp, tomeBorderColor, RoundedCornerShape(18.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, tomeBorderColor, RoundedCornerShape(16.dp)),
             color = tomeBgColor
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -1149,11 +1159,10 @@ fun RepertoryBrowseDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "${selectedItem?.orderNumber?.let { "$it. " } ?: ""}${selectedItem?.title?.uppercase() ?: ""}${if (selectedSubSection != null) " · ${selectedSubSection?.title}" else ""}",
+                            text = "${selectedItem?.orderNumber?.let { "$it. " } ?: ""}${selectedItem?.title?.toClinicalTitle() ?: ""}${if (selectedSubSection != null) " · ${selectedSubSection?.title}" else ""}",
                             fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp,
-                            letterSpacing = 1.sp,
                             color = if (isDark) goldAccent else TerracottaPrimary
                         )
                     }
@@ -1435,11 +1444,10 @@ fun RepertoryBrowseDialog(
                     ) {
                         Column {
                             Text(
-                                text = "TOTALITY SELECTION",
+                                text = "Totality selection",
                                 fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                letterSpacing = 1.2.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
                                 color = goldAccent
                             )
                             Text(
@@ -1558,7 +1566,7 @@ fun ClassicalIndexDialog(
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.85f)
                 .clip(RoundedCornerShape(16.dp))
-                .border(2.dp, tomeBorderColor, RoundedCornerShape(16.dp)),
+                .border(1.dp, tomeBorderColor, RoundedCornerShape(16.dp)),
             color = tomeBgColor
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -1576,11 +1584,10 @@ fun ClassicalIndexDialog(
                     ) {
                         Column {
                             Text(
-                                text = "INDEX REPERTORII",
+                                text = "Index Repertorii",
                                 fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                letterSpacing = 1.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
                                 color = goldAccent
                             )
                             Text(
@@ -1631,11 +1638,10 @@ fun ClassicalIndexDialog(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = "SECTION 1 — KENT'S REPERTORY (${classicalChapters.size} Classical Chapters)",
+                                    text = "Section 1 — Kent's Repertory (${classicalChapters.size} Classical Chapters)",
                                     fontFamily = FontFamily.Serif,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp,
-                                    letterSpacing = 1.sp,
                                     color = goldAccent
                                 )
                                 Text(
@@ -1753,11 +1759,10 @@ fun ClassicalIndexDialog(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = "SECTION 2 — ADDITIONAL RUBRICS (${additionalChapters.size} Chapters)",
+                                    text = "Section 2 — Additional Rubrics (${additionalChapters.size} Chapters)",
                                     fontFamily = FontFamily.Serif,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp,
-                                    letterSpacing = 1.sp,
                                     color = if (isDark) SageGreenLight else SageGreenPrimary
                                 )
                                 Text(

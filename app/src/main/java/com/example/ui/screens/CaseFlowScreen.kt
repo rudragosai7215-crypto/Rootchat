@@ -375,7 +375,7 @@ fun CaseFlowScreen(
                 progress = { (currentStep + 1).toFloat() / totalSteps },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp),
+                    .height(3.dp),
                 color = accentColor,
                 trackColor = if (isDark) Color(0x33FFFFFF) else Color(0x22000000)
             )
@@ -388,19 +388,33 @@ fun CaseFlowScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 // Step Title & Indicator
-                Text(
-                    text = "STEP ${currentStep + 1}",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    color = accentColor,
-                    fontFamily = FontFamily.Serif
-                )
-                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        color = accentColor.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "Step ${currentStep + 1} of $totalSteps",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentColor,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                    Text(
+                        text = if (isAcute) "Acute proforma" else "Chronic proforma",
+                        fontSize = 11.sp,
+                        color = subtextColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = stepTitles[currentStep],
                     fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 20.sp,
                     color = textColor
                 )
@@ -533,9 +547,9 @@ fun CaseFlowScreen(
                     onDismissRequest = { showStepListDialog = false },
                     title = {
                         Text(
-                            text = "Jump to Protocol Step",
+                            text = "Protocol steps",
                             fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 18.sp,
                             color = textColor
                         )
@@ -552,7 +566,7 @@ fun CaseFlowScreen(
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(10.dp))
                                         .clickable {
                                             if (!isSaving) {
                                                 val updated = updateCaseWithRubrics().copy(currentStep = idx)
@@ -562,13 +576,13 @@ fun CaseFlowScreen(
                                             }
                                             showStepListDialog = false
                                         }
-                                        .background(if (isCurrent) accentColor.copy(alpha = 0.25f) else Color.Transparent)
+                                        .background(if (isCurrent) accentColor.copy(alpha = 0.14f) else Color.Transparent)
                                         .border(
-                                            width = if (isCurrent) 1.5.dp else 0.5.dp,
+                                            width = if (isCurrent) 1.dp else 0.5.dp,
                                             color = if (isCurrent) accentColor else if (isDark) DarkGlassBorder else LightGlassBorder,
-                                            shape = RoundedCornerShape(8.dp)
+                                            shape = RoundedCornerShape(10.dp)
                                         )
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        .padding(horizontal = 12.dp, vertical = 9.dp),
                                     color = Color.Transparent
                                 ) {
                                     Row(
@@ -577,13 +591,13 @@ fun CaseFlowScreen(
                                     ) {
                                         Text(
                                             text = "${idx + 1}.",
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.SemiBold,
                                             fontSize = 12.sp,
                                             color = if (isCurrent) accentColor else subtextColor
                                         )
                                         Text(
                                             text = title,
-                                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                            fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                                             fontSize = 13.sp,
                                             color = if (isCurrent) accentColor else textColor,
                                             modifier = Modifier.weight(1f)
@@ -603,7 +617,7 @@ fun CaseFlowScreen(
                     },
                     confirmButton = {
                         TextButton(onClick = { showStepListDialog = false }) {
-                            Text("Close", color = accentColor)
+                            Text("Done", color = accentColor, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 )

@@ -243,11 +243,10 @@ fun ProfileScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "CLINICIAN SESSION & CONTINUITY",
+                                text = "Clinician session & continuity",
                                 fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.5.sp,
-                                letterSpacing = 1.2.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
                                 color = if (isDark) TerracottaLight else TerracottaPrimary
                             )
                         }
@@ -259,9 +258,9 @@ fun ProfileScreen(
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "ISOLATED BY NAME",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
+                                text = "Isolated session",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = if (isDark) SageGreenLight else SageGreenPrimary
                             )
                         }
@@ -369,11 +368,10 @@ fun ProfileScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "KENT REPERTORY DATABASE",
+                                text = "Kent repertory database",
                                 fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.5.sp,
-                                letterSpacing = 1.4.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
                                 color = if (isDark) TerracottaLight else TerracottaPrimary
                             )
                         }
@@ -504,11 +502,10 @@ fun ProfileScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "ORGANON OF MEDICINE • § 153",
+                            text = "Organon of Medicine · § 153",
                             fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.5.sp,
-                            letterSpacing = 1.2.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
                             color = if (isDark) SageGreenLight else SageGreenPrimary
                         )
                     }

@@ -487,9 +487,9 @@ private fun LibraryCaseCard(
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = "COMPLETE",
-                                        fontSize = 8.5.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        text = "Completed",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = if (isDark) Color(0xFF88B097) else Color(0xFF385542)
                                     )
                                 }

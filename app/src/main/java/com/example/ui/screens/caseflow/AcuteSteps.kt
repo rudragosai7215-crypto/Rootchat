@@ -61,11 +61,10 @@ fun AcuteLsmcStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
-                text = "CHIEF COMPLAINTS (LSMC FORM WITH O.D.P.)",
+                text = "Chief complaints (LSMC with O.D.P.)",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
             Text(
@@ -76,7 +75,7 @@ fun AcuteLsmcStep(
 
             // O.D.P. field (Onset, Duration, Progress)
             ClinicalTextField(
-                label = "O.D.P. (ONSET, DURATION, PROGRESSION)",
+                label = "O.D.P. (Onset, Duration, Progression)",
                 value = formData.acuteOdp,
                 onValueChange = { onUpdateForm(formData.copy(acuteOdp = it)) },
                 placeholder = "e.g. Sudden violent onset after cold dry wind 6 hours ago; rapidly progressing with high fever...",
@@ -85,13 +84,12 @@ fun AcuteLsmcStep(
                 minLines = 2
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "4-COLUMN LSMC TABLE",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
+                text = "LSMC complaint analysis",
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = if (isDark) TerracottaLight else TerracottaPrimary,
                 fontFamily = FontFamily.Serif
             )
@@ -108,42 +106,42 @@ fun AcuteLsmcStep(
                 // Table Header
                 Row(
                     modifier = Modifier
-                        .background(if (isDark) Color(0x33B5502F) else Color(0x20B5502F))
+                        .background(if (isDark) Color(0x22FFFFFF) else Color(0x0E000000))
                         .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "#",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = textColor,
                         modifier = Modifier.width(32.dp)
                     )
                     Text(
-                        text = "LOCATION",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Location",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         modifier = Modifier.width(180.dp)
                     )
                     Text(
-                        text = "SENSATION",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Sensation",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         modifier = Modifier.width(180.dp)
                     )
                     Text(
-                        text = "MODALITY (< / >)",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Modalities (< / >)",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         modifier = Modifier.width(180.dp)
                     )
                     Text(
-                        text = "CONCOMITANT",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Concomitants",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         modifier = Modifier.width(180.dp)
                     )

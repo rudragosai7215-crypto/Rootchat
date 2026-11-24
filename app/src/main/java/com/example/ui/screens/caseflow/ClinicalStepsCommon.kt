@@ -241,11 +241,10 @@ fun PersonalHistoryStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "INDIVIDUAL PERSONAL CHARACTERISTICS & GENERALS",
+                text = "Personal characteristics & generals",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
@@ -350,10 +349,9 @@ fun PersonalHistoryStep(
             // Thermal State (with Quick Selector Chips)
             Column {
                 Text(
-                    text = "THERMAL STATE",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
+                    text = "Thermal state",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isDark) TerracottaLight else TerracottaPrimary,
                     fontFamily = FontFamily.Serif
                 )
@@ -455,11 +453,10 @@ fun VitalExaminationStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "CLINICAL VITAL SIGNS",
+                text = "Clinical vital signs",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
@@ -531,11 +528,10 @@ fun MenstrualHistoryStep(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "MENSTRUAL HISTORY (IF APPLICABLE)",
+                        text = "Menstrual history (if applicable)",
                         fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        letterSpacing = 1.4.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
                         color = if (isDark) TerracottaLight else TerracottaPrimary
                     )
                     Text(
@@ -583,10 +579,9 @@ fun MenstrualHistoryStep(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "CYCLE",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
+                                text = "Cycle regularity",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = if (isDark) TerracottaLight else TerracottaPrimary,
                                 fontFamily = FontFamily.Serif
                             )
@@ -684,12 +679,11 @@ fun MenstrualHistoryStep(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // 4-Column Concomitants Table: Before, Beginning, During, After menses
+                    // Concomitants Table: Before, Beginning, During, After menses
                     Text(
-                        text = "4-COLUMN CONCOMITANTS TABLE",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
+                        text = "Concomitants table (Before, Beginning, During, After)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         fontFamily = FontFamily.Serif
                     )
@@ -753,10 +747,9 @@ fun MenstrualHistoryStep(
 
                     // Leucorrhoea
                     Text(
-                        text = "LEUCORRHOEA DETAILS",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
+                        text = "Leucorrhoea details",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         fontFamily = FontFamily.Serif
                     )
@@ -815,11 +808,10 @@ fun ObstetricHistoryStep(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "PATIENT'S OBSTETRIC HISTORY (IF APPLICABLE)",
+                        text = "Obstetric history (if applicable)",
                         fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        letterSpacing = 1.4.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
                         color = if (isDark) TerracottaLight else TerracottaPrimary
                     )
                     Text(
@@ -866,11 +858,10 @@ fun GeneralPhysicalExamStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = "GENERAL PHYSICAL EXAMINATION (G.P.E.)",
+                text = "General physical examination (G.P.E.)",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
@@ -994,11 +985,10 @@ fun SystemicExamStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = "SYSTEMIC EXAMINATION",
+                text = "Systemic examination",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
@@ -1057,11 +1047,10 @@ fun InvestigationStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "CLINICAL INVESTIGATIONS & LABORATORY FINDINGS",
+                text = "Clinical investigations & laboratory findings",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
 
@@ -1274,11 +1263,10 @@ fun AnalysisOfSymptomsStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "ANALYSIS OF SYMPTOMS",
+                text = "Analysis of symptoms",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
             Text(
@@ -1364,10 +1352,9 @@ fun AnalysisOfSymptomsStep(
 
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     Text(
-                                        text = "FREQUENCY",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.2.sp,
+                                        text = "Frequency",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                                         fontFamily = FontFamily.Serif
                                     )
@@ -1444,11 +1431,10 @@ fun EvaluationOfSymptomsStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
-                text = "EVALUATION OF SYMPTOMS",
+                text = "Evaluation of symptoms (Kent's hierarchy)",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) TerracottaLight else TerracottaPrimary
             )
             Text(
@@ -1535,10 +1521,9 @@ fun EvaluationOfSymptomsStep(
 
                                 Column(modifier = Modifier.weight(1.2f)) {
                                     Text(
-                                        text = "GRADE",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.2.sp,
+                                        text = "Grade",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                                         fontFamily = FontFamily.Serif
                                     )

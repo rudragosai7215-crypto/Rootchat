@@ -197,10 +197,9 @@ fun EntryScreen(
 
                     // Clinician Name Input
                     Text(
-                        text = "CLINICIAN NAME",
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
+                        text = "Clinician name",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         fontFamily = FontFamily.Serif
                     )
@@ -239,10 +238,9 @@ fun EntryScreen(
 
                     // Role Selector (Doctor / Student)
                     Text(
-                        text = "CLINICAL ROLE",
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
+                        text = "Clinical role",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) TerracottaLight else TerracottaPrimary,
                         fontFamily = FontFamily.Serif
                     )

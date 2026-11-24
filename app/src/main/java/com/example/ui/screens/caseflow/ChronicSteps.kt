@@ -54,7 +54,7 @@ fun ChronicChiefComplaintStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ClinicalTextField(
-                label = "CHIEF COMPLAINTS (PATIENT'S OWN WORDS) *",
+                label = "Chief complaints (Patient's own words) *",
                 value = formData.chronicChiefComplaint,
                 onValueChange = { onUpdateForm(formData.copy(chronicChiefComplaint = it)) },
                 placeholder = "Describe the primary complaints in the exact words of the patient without clinical interpretations...",
@@ -75,7 +75,7 @@ fun ChronicOdpStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ClinicalTextField(
-                label = "ONSET",
+                label = "Onset",
                 value = formData.onset,
                 onValueChange = { onUpdateForm(formData.copy(onset = it)) },
                 placeholder = "When did the complaint start? Was it insidious, gradual, or sudden after a specific event?",
@@ -85,7 +85,7 @@ fun ChronicOdpStep(
             )
 
             ClinicalTextField(
-                label = "DURATION",
+                label = "Duration",
                 value = formData.duration,
                 onValueChange = { onUpdateForm(formData.copy(duration = it)) },
                 placeholder = "e.g. 6 months, 3 years, recurring every winter...",
@@ -94,7 +94,7 @@ fun ChronicOdpStep(
             )
 
             ClinicalTextField(
-                label = "PROGRESS",
+                label = "Progress",
                 value = formData.progress,
                 onValueChange = { onUpdateForm(formData.copy(progress = it)) },
                 placeholder = "How has the disease evolved over time? Stable, progressively worsening, seasonal fluctuation?",
@@ -122,7 +122,7 @@ fun ChronicHpcStep(
                 color = subtextColor
             )
             ClinicalTextField(
-                label = "HISTORY OF PRESENTING COMPLAINT (CHRONIC) *",
+                label = "History of presenting complaint (Chronic) *",
                 value = formData.hpcNarrative,
                 onValueChange = { onUpdateForm(formData.copy(hpcNarrative = it)) },
                 placeholder = "Comprehensive narrative of presenting complaint...",
@@ -148,11 +148,10 @@ fun PastHistoryTableStep(
     GlassPanel(modifier = Modifier.fillMaxWidth(), isDark = isDark) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
-                text = "PAST MEDICAL & SURGICAL HISTORY",
+                text = "Past medical & surgical history",
                 fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp,
-                letterSpacing = 1.4.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
                 color = if (isDark) SageGreenLight else SageGreenPrimary
             )
             Text(
@@ -172,35 +171,35 @@ fun PastHistoryTableStep(
                 // Table Header
                 Row(
                     modifier = Modifier
-                        .background(if (isDark) Color(0x335B7E68) else Color(0x205B7E68))
+                        .background(if (isDark) Color(0x22FFFFFF) else Color(0x0E000000))
                         .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "NO",
+                        text = "#",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = textColor,
                         modifier = Modifier.width(36.dp)
                     )
                     Text(
-                        text = "DISEASE / ILLNESS",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Disease / Illness",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) SageGreenLight else SageGreenPrimary,
                         modifier = Modifier.width(200.dp)
                     )
                     Text(
-                        text = "DURATION",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Duration",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) SageGreenLight else SageGreenPrimary,
                         modifier = Modifier.width(150.dp)
                     )
                     Text(
-                        text = "TREATMENT TAKEN",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Treatment taken",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) SageGreenLight else SageGreenPrimary,
                         modifier = Modifier.width(200.dp)
                     )
@@ -339,35 +338,35 @@ fun FamilyHistoryTableStep(
                 // Table Header
                 Row(
                     modifier = Modifier
-                        .background(if (isDark) Color(0x335B7E68) else Color(0x205B7E68))
+                        .background(if (isDark) Color(0x22FFFFFF) else Color(0x0E000000))
                         .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "NO",
+                        text = "#",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = textColor,
                         modifier = Modifier.width(36.dp)
                     )
                     Text(
-                        text = "RELATIONSHIP",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Relationship",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) SageGreenLight else SageGreenPrimary,
                         modifier = Modifier.width(180.dp)
                     )
                     Text(
-                        text = "HEALTH / ILLNESS DETAILS",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Health & illness details",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) SageGreenLight else SageGreenPrimary,
                         modifier = Modifier.width(230.dp)
                     )
                     Text(
-                        text = "ALIVE / DEAD",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Status (Alive / Deceased)",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isDark) SageGreenLight else SageGreenPrimary,
                         modifier = Modifier.width(140.dp)
                     )
